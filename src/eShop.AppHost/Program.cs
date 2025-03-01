@@ -99,6 +99,13 @@ identityApi.WithEnvironment("BasketApiClient", basketApi.GetEndpoint("http"))
            .WithEnvironment("WebhooksWebClient", webhooksClient.GetEndpoint(launchProfileName))
            .WithEnvironment("WebAppClient", webApp.GetEndpoint(launchProfileName));
 
+// var jaeger = builder.AddContainer("jaeger", "jaegertracing/all-in-one:latest")
+//     .WithEnvironment("COLLECTOR_ZIPKIN_HOST_PORT", ":9411")
+//     .WithEnvironment("COLLECTOR_OTLP_ENABLED", "true")
+//     .WithEndpoint(16686, 16686, name: "ui", scheme: "http")  // UI Port
+//     .WithEndpoint(4317, 4317, name: "grpc")  // OTLP gRPC
+//     .WithEndpoint(4318, 4318, name: "http"); // OTLP HTTP
+
 builder.Build().Run();
 
 // For test use only.
