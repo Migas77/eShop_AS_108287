@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using eShop.WebAppComponents.Catalog;
 using eShop.WebAppComponents.Services;
-
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 namespace eShop.WebApp.Services;
 
 public class BasketState(
@@ -12,6 +13,9 @@ public class BasketState(
     OrderingService orderingService,
     AuthenticationStateProvider authenticationStateProvider) : IBasketState
 {
+    private static readonly ActivitySource _activitySource = new("eShop.WebApp.BasketState");
+    private static readonly Meter _meter = new("eShop.WebApp.BasketState");
+    private static readonly Counter<int> _checkoutCounter = _meter.CreateCounter<int>("basket.checkout.count", description: "Number of basket checkouts");
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
     private HashSet<BasketStateChangedSubscription> _changeSubscriptions = new();
 
@@ -77,35 +81,50 @@ public class BasketState(
 
     public async Task CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
-        if (checkoutInfo.RequestId == default)
+        using var activity = _activitySource.StartActivity("CheckoutAsync");
+        activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
+
+        try
         {
-            checkoutInfo.RequestId = Guid.NewGuid();
+            if (checkoutInfo.RequestId == default)
+            {
+                checkoutInfo.RequestId = Guid.NewGuid();
+            }
+            activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
+            _checkoutCounter.Add(1);
+
+            var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
+            var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
+
+            // Get details for the items in the basket
+            var orderItems = await FetchBasketItemsAsync();
+            activity?.SetTag("basket.items.count", orderItems.Count);
+            activity?.SetTag("basket.total", orderItems.Sum(i => i.UnitPrice * i.Quantity));
+
+            // Call into Ordering.API to create the order using those details
+            var request = new CreateOrderRequest(
+                UserId: buyerId,
+                UserName: userName,
+                City: checkoutInfo.City!,
+                Street: checkoutInfo.Street!,
+                State: checkoutInfo.State!,
+                Country: checkoutInfo.Country!,
+                ZipCode: checkoutInfo.ZipCode!,
+                CardNumber: "1111222233334444",
+                CardHolderName: "TESTUSER",
+                CardExpiration: DateTime.UtcNow.AddYears(1),
+                CardSecurityNumber: "111",
+                CardTypeId: checkoutInfo.CardTypeId,
+                Buyer: buyerId,
+                Items: [.. orderItems]);
+            await orderingService.CreateOrder(request, checkoutInfo.RequestId);
+            await DeleteBasketAsync();
         }
-
-        var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
-        var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
-
-        // Get details for the items in the basket
-        var orderItems = await FetchBasketItemsAsync();
-
-        // Call into Ordering.API to create the order using those details
-        var request = new CreateOrderRequest(
-            UserId: buyerId,
-            UserName: userName,
-            City: checkoutInfo.City!,
-            Street: checkoutInfo.Street!,
-            State: checkoutInfo.State!,
-            Country: checkoutInfo.Country!,
-            ZipCode: checkoutInfo.ZipCode!,
-            CardNumber: "1111222233334444",
-            CardHolderName: "TESTUSER",
-            CardExpiration: DateTime.UtcNow.AddYears(1),
-            CardSecurityNumber: "111",
-            CardTypeId: checkoutInfo.CardTypeId,
-            Buyer: buyerId,
-            Items: [.. orderItems]);
-        await orderingService.CreateOrder(request, checkoutInfo.RequestId);
-        await DeleteBasketAsync();
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     private Task NotifyChangeSubscribersAsync()

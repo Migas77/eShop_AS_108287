@@ -1,7 +1,7 @@
 ﻿using eShop.Basket.API.Grpc;
 using GrpcBasketItem = eShop.Basket.API.Grpc.BasketItem;
 using GrpcBasketClient = eShop.Basket.API.Grpc.Basket.BasketClient;
-
+using System.Diagnostics;
 namespace eShop.WebApp.Services;
 
 public class BasketService(GrpcBasketClient basketClient)
@@ -14,6 +14,7 @@ public class BasketService(GrpcBasketClient basketClient)
 
     public async Task DeleteBasketAsync()
     {
+        using var activity = Activity.Current;
         await basketClient.DeleteBasketAsync(new DeleteBasketRequest());
     }
 

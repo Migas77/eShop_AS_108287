@@ -61,6 +61,7 @@ public static partial class Extensions
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
+                    .AddMeter("eShop.WebApp.BasketState")
                     .AddMeter("Experimental.Microsoft.Extensions.AI");
             })
             .WithTracing(tracing =>
@@ -74,6 +75,9 @@ public static partial class Extensions
                 tracing.AddAspNetCoreInstrumentation()
                     .AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation()
+                    .AddSource("eShop.WebApp.BasketState")
+                    .AddSource("eShop.ClientApp.OrderService")
+                    .AddSource("eShop.Basket.API.IntegrationEvents.EventHandling.OrderStartedIntegrationEventHandler")
                     .AddSource("Experimental.Microsoft.Extensions.AI");                    
             });
 
@@ -101,6 +105,9 @@ public static partial class Extensions
             builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
         }
 
+
+        builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddPrometheusExporter());
+
         return builder;
     }
 
@@ -116,7 +123,11 @@ public static partial class Extensions
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Uncomment the following line to enable the Prometheus endpoint (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
-        // app.MapPrometheusScrapingEndpoint();
+        app.MapPrometheusScrapingEndpoint();
+        // app.UseOpenTelemetryPrometheusScrapingEndpoint(
+        //     context => context.Request.Path == "/metrics"
+        //         && context.Connection.LocalPort == 9064
+        // );
 
         // Adding health checks endpoints to applications in non-development environments has security implications.
         // See https://aka.ms/dotnet/aspire/healthchecks for details before enabling these endpoints in non-development environments.

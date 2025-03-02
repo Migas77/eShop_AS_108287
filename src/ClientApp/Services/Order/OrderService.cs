@@ -5,6 +5,7 @@ using eShop.ClientApp.Models.Orders;
 using eShop.ClientApp.Services.Identity;
 using eShop.ClientApp.Services.RequestProvider;
 using eShop.ClientApp.Services.Settings;
+using System.Diagnostics;
 
 namespace eShop.ClientApp.Services.Order;
 
@@ -16,6 +17,7 @@ public class OrderService : IOrderService
     private readonly IIdentityService _identityService;
     private readonly IRequestProvider _requestProvider;
     private readonly ISettingsService _settingsService;
+    private static readonly ActivitySource _activitySource = new("eShop.ClientApp.OrderService");
 
     public OrderService(IIdentityService identityService, ISettingsService settingsService,
         IRequestProvider requestProvider)
@@ -27,16 +29,31 @@ public class OrderService : IOrderService
 
     public async Task CreateOrderAsync(Models.Orders.Order newOrder)
     {
-        var authToken = await _identityService.GetAuthTokenAsync().ConfigureAwait(false);
-
-        if (string.IsNullOrEmpty(authToken))
+        using var activity = _activitySource.StartActivity("CreateOrder");
+        try
         {
-            return;
+            activity?.SetTag("order.userId", newOrder.UserId);
+            activity?.SetTag("order.total", newOrder.Total);
+            activity?.SetTag("order.items.count", newOrder.OrderItems.Count);
+
+            var authToken = await _identityService.GetAuthTokenAsync().ConfigureAwait(false);
+            if (string.IsNullOrEmpty(authToken))
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, "No auth token available");
+                return;
+            }
+
+            var uri = $"{UriHelper.CombineUri(_settingsService.GatewayOrdersEndpointBase, ApiUrlBase)}?{ApiVersion}";
+            activity?.SetTag("http.url", uri);
+
+            var success = await _requestProvider.PostAsync(uri, newOrder, authToken, "x-requestid").ConfigureAwait(false);
+            activity?.SetStatus(success ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
         }
-
-        var uri = $"{UriHelper.CombineUri(_settingsService.GatewayOrdersEndpointBase, ApiUrlBase)}?{ApiVersion}";
-
-        var success = await _requestProvider.PostAsync(uri, newOrder, authToken, "x-requestid").ConfigureAwait(false);
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     public async Task<IEnumerable<Models.Orders.Order>> GetOrdersAsync()

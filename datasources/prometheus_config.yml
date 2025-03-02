@@ -1,0 +1,6 @@
+scrape_configs:
+  - job_name: 'aspnetcore_app'
+    scrape_interval: 5s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9064']
