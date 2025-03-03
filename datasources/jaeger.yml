@@ -7,4 +7,4 @@ datasources:
     url: http://host.docker.internal:16686
     access: proxy
     basicAuth: false
-    isDefault: true
+    isDefault: false

@@ -1,6 +1,106 @@
+global:
+  scrape_interval: 5s
+
 scrape_configs:
-  - job_name: 'aspnetcore_app'
-    scrape_interval: 5s
-    metrics_path: '/metrics'
+  # HTTPS
+  # 'https://localhost:5243', # Identity API HTTPS
+  # 'https://localhost:7298', # WebApp HTTPS
+  # 'https://localhost:7260'  # Webhooks Client HTTPS
+  - job_name: 'eshop-identity-api-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     static_configs:
-      - targets: ['localhost:9064']
+      - targets: ['host.docker.internal:5243']
+        labels:
+          service: 'identity-api-https'
+
+  - job_name: 'eshop-webapp-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ['host.docker.internal:7298']
+        labels:
+          service: 'webapp-https'
+
+  - job_name: 'eshop-webhooks-client-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ['host.docker.internal:7260']
+        labels:
+            service: 'webhooks-client-https'
+
+  # HTTP
+  # 'http://localhost:5045',  # WebApp HTTP
+  # 'http://localhost:5062',  # Webhooks Client HTTP
+  # 'http://localhost:5221',  # Basket API
+  # 'http://localhost:5222',  # Catalog API
+  # 'http://localhost:5223',  # Identity API HTTP
+  # 'http://localhost:5224',  # Ordering API
+  # 'http://localhost:5226',  # Payment Processor
+  # 'http://localhost:5227',  # Webhooks API
+  # 'http://localhost:11632', # Mobile BFF
+  # 'http://localhost:16888', # Order Processor
+  - job_name: 'eshop-webapp-http'
+    static_configs:
+      - targets: ['host.docker.internal:5045']
+        labels:
+          service: 'webapp-http'
+
+  - job_name: 'eshop-webhooks-client-http'
+    static_configs:
+      - targets: ['host.docker.internal:5062']
+        labels:
+          service: 'webhooks-client-http'
+
+  - job_name: 'eshop-basket-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:5221']
+        labels:
+          service: 'basket-api-http'
+
+  - job_name: 'eshop-catalog-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:5222']
+        labels:
+          service: 'catalog-api-http'
+
+  - job_name: 'eshop-identity-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:5223']
+        labels:
+          service: 'identity-api-http'
+
+  - job_name: 'eshop-ordering-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:5224']
+        labels:
+          service: 'ordering-api-http'
+
+  - job_name: 'eshop-payment-processor-http'
+    static_configs:
+      - targets: ['host.docker.internal:5226']
+        labels:
+          service: 'payment-processor-http'
+
+  - job_name: 'eshop-webhooks-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:5227']
+        labels:
+          service: 'webhooks-api-http'
+
+  - job_name: 'eshop-mobile-bff-http'
+    static_configs:
+      - targets: ['host.docker.internal:11632']
+        labels:
+          service: 'mobile-bff-http'
+        
+  - job_name: 'eshop-order-processor-http'
+    static_configs:
+      - targets: ['host.docker.internal:16888']
+        labels:
+          service: 'order-processor-http'
+  
