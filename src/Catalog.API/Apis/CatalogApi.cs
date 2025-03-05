@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -163,7 +164,19 @@ public static class CatalogApi
         [AsParameters] CatalogServices services,
         [Description("List of ids for catalog items to return")] int[] ids)
     {
+        var activity = Activity.Current;
+        activity?.AddEvent(new("Get Items By Ids"));
+        activity?.SetTag("catalog.ids.count", ids.Length);
         var items = await services.Context.CatalogItems.Where(item => ids.Contains(item.Id)).ToListAsync();
+        activity?.SetTag("catalog.items.count", items.Count);
+
+        if (ids.Length != items.Count)
+        {
+            activity?.AddEvent(new("Some items were not found"));
+            activity?.SetTag("catalog.items.missing", ids.Length - items.Count);
+            var missingIds = ids.Except(items.Select(item => item.Id)).ToArray();
+            activity?.SetTag("catalog.items.missing.ids", string.Join(", ", missingIds));
+        }
         return TypedResults.Ok(items);
     }
 
