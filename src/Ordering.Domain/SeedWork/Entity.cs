@@ -1,7 +1,11 @@
-﻿namespace eShop.Ordering.Domain.Seedwork;
+﻿using System.Diagnostics;
+
+namespace eShop.Ordering.Domain.Seedwork;
 
 public abstract class Entity
 {
+    private static readonly ActivitySource _activitySource = new("eShop.Ordering.Domain.Seedwork.Entity");
+
     int? _requestedHashCode;
     int _Id;
     public virtual int Id
@@ -21,6 +25,9 @@ public abstract class Entity
 
     public void AddDomainEvent(INotification eventItem)
     {
+        using var activity = _activitySource.StartActivity("AddDomainEvent");
+        activity?.SetTag("event.type", eventItem.GetType().Name);
+        activity?.SetTag("event.content", eventItem.ToString());
         _domainEvents = _domainEvents ?? new List<INotification>();
         _domainEvents.Add(eventItem);
     }

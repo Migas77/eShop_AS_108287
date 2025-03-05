@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Http.HttpResults;
 using CardType = eShop.Ordering.API.Application.Queries.CardType;
 using Order = eShop.Ordering.API.Application.Queries.Order;
 
 public static class OrdersApi
 {
+
+    private static readonly ActivitySource _activitySource = new("eShop.Ordering.API.OrdersApi");
     public static RouteGroupBuilder MapOrdersApiV1(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup("api/orders").HasApiVersion(1.0);
@@ -120,8 +123,14 @@ public static class OrdersApi
         CreateOrderRequest request,
         [AsParameters] OrderServices services)
     {
-        
+
         //mask the credit card number
+
+        var activity = Activity.Current;
+        activity?.AddEvent(new("Create Order Async"));
+        activity?.SetTag("order.request.id", requestId);
+        activity?.SetTag("order.request.userId", request.UserId);
+        activity?.SetTag("order.request.items", request.Items.Count);
         
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId}",
@@ -132,18 +141,36 @@ public static class OrdersApi
         if (requestId == Guid.Empty)
         {
             services.Logger.LogWarning("Invalid IntegrationEvent - RequestId is missing - {@IntegrationEvent}", request);
+            activity?.AddEvent(new("Invalid IntegrationEvent - RequestId is missing"));
+            activity?.SetStatus(ActivityStatusCode.Error, "Invalid IntegrationEvent - RequestId is missing");
             return TypedResults.BadRequest("RequestId is missing.");
         }
 
         using (services.Logger.BeginScope(new List<KeyValuePair<string, object>> { new("IdentifiedCommandId", requestId) }))
         {
+            using var createCommandActivity = _activitySource.StartActivity("CreateOrderCommand publish");
+            createCommandActivity?.AddEvent(new("Creating CreateOrderCommand"));
+            createCommandActivity?.SetTag("order.request.id", requestId);
+            createCommandActivity?.SetTag("order.request.userId", request.UserId);
+            createCommandActivity?.SetTag("order.request.items", request.Items.Count);
+
             var maskedCCNumber = request.CardNumber.Substring(request.CardNumber.Length - 4).PadLeft(request.CardNumber.Length, 'X');
             var createOrderCommand = new CreateOrderCommand(request.Items, request.UserId, request.UserName, request.City, request.Street,
                 request.State, request.Country, request.ZipCode,
                 maskedCCNumber, request.CardHolderName, request.CardExpiration,
                 request.CardSecurityNumber, request.CardTypeId);
-
             var requestCreateOrder = new IdentifiedCommand<CreateOrderCommand, bool>(createOrderCommand, requestId);
+
+            createCommandActivity?.AddEvent(new ActivityEvent(
+                "Sending CreateOrderCommand",
+                DateTime.UtcNow,
+                new ActivityTagsCollection{
+                    { "CommandName", requestCreateOrder.GetGenericTypeName() },
+                    { "IdProperty", nameof(requestCreateOrder.Id) },
+                    { "CommandId", requestCreateOrder.Id },
+                    { "@Command", requestCreateOrder }
+                }
+            ));
 
             services.Logger.LogInformation(
                 "Sending command: {CommandName} - {IdProperty}: {CommandId} ({@Command})",
@@ -157,10 +184,13 @@ public static class OrdersApi
             if (result)
             {
                 services.Logger.LogInformation("CreateOrderCommand succeeded - RequestId: {RequestId}", requestId);
+                activity?.AddEvent(new("CreateOrderCommand succeeded"));
             }
             else
             {
                 services.Logger.LogWarning("CreateOrderCommand failed - RequestId: {RequestId}", requestId);
+                activity?.AddEvent(new("CreateOrderCommand failed"));
+                activity?.SetStatus(ActivityStatusCode.Error, "CreateOrderCommand failed");
             }
 
             return TypedResults.Ok();

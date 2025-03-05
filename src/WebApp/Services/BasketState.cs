@@ -13,7 +13,6 @@ public class BasketState(
     OrderingService orderingService,
     AuthenticationStateProvider authenticationStateProvider) : IBasketState
 {
-    private static readonly ActivitySource _activitySource = new("eShop.WebApp.BasketState");
     private static readonly Meter _meter = new("eShop.WebApp.BasketState");
     private static readonly Counter<int> _checkoutCounter = _meter.CreateCounter<int>("basket.checkout.count", description: "Number of basket checkouts");
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
@@ -81,7 +80,7 @@ public class BasketState(
 
     public async Task CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
-        using var activity = _activitySource.StartActivity("CheckoutAsync");
+        var activity = Activity.Current;
         activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
 
         try
@@ -95,6 +94,9 @@ public class BasketState(
 
             var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
             var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
+
+            activity?.SetTag("basket.buyerId", buyerId);
+            activity?.SetTag("basket.userName", userName);
 
             // Get details for the items in the basket
             var orderItems = await FetchBasketItemsAsync();

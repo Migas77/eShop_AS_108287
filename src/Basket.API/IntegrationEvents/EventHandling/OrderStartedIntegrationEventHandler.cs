@@ -11,16 +11,15 @@ public class OrderStartedIntegrationEventHandler(
 
     public async Task Handle(OrderStartedIntegrationEvent @event)
     {
-        using var activity = _activitySource.StartActivity("Handle");
-        activity?.SetTag("basket.requestId", @event.Id);
-        activity?.SetTag("basket.userId", @event.UserId);
+        using var activity = _activitySource.StartActivity("OrderStartedIntegrationEvent handler");
+        activity?.SetTag("event.id", @event.Id);
+        activity?.SetTag("event.userId", @event.UserId);
 
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
 
         var result = await repository.DeleteBasketAsync(@event.UserId);
-        activity?.SetTag("basket.deleted", result);
+        activity?.SetTag("event.basket.deleted", result);
         // TODO: MINE Sometimes this fails for some reason.
-        // TODO: MINE Add Events
 
         if (result)
         {

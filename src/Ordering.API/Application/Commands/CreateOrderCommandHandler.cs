@@ -1,5 +1,6 @@
 ﻿namespace eShop.Ordering.API.Application.Commands;
 
+using System.Diagnostics;
 using eShop.Ordering.Domain.AggregatesModel.OrderAggregate;
 
 // Regular CommandHandler
@@ -11,6 +12,7 @@ public class CreateOrderCommandHandler
     private readonly IMediator _mediator;
     private readonly IOrderingIntegrationEventService _orderingIntegrationEventService;
     private readonly ILogger<CreateOrderCommandHandler> _logger;
+    private readonly ActivitySource _activitySource = new("eShop.Ordering.API.CreateOrderCommandHandler");
 
     // Using DI to inject infrastructure persistence Repositories
     public CreateOrderCommandHandler(IMediator mediator,
@@ -28,6 +30,16 @@ public class CreateOrderCommandHandler
 
     public async Task<bool> Handle(CreateOrderCommand message, CancellationToken cancellationToken)
     {
+        using var activity = _activitySource.StartActivity("CreateOrderCommand Handler");
+        activity?.AddEvent(new ActivityEvent(
+            "Received CreateOrderCommand",
+            DateTime.UtcNow,
+            new ActivityTagsCollection{
+                { "CommandName", message.GetGenericTypeName() },
+                { "@Command", message }
+            }
+        ));
+
         // Add Integration event to clean the basket
         var orderStartedIntegrationEvent = new OrderStartedIntegrationEvent(message.UserId);
         await _orderingIntegrationEventService.AddAndSaveEventAsync(orderStartedIntegrationEvent);

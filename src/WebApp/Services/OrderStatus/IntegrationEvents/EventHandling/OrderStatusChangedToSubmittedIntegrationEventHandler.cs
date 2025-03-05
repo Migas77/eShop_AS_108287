@@ -7,12 +7,16 @@ public class OrderStatusChangedToSubmittedIntegrationEventHandler(
     ILogger<OrderStatusChangedToSubmittedIntegrationEventHandler> logger)
     : IIntegrationEventHandler<OrderStatusChangedToSubmittedIntegrationEvent>
 {
+    private static readonly ActivitySource _activitySource = new("eShop.WebApp.Services.OrderStatus.IntegrationEvents.OrderStatusChangedToSubmittedIntegrationEventHandler");
+
     public async Task Handle(OrderStatusChangedToSubmittedIntegrationEvent @event)
     {
-        using var activity = Activity.Current;
-        activity?.SetTag("order.oldOrderStatus", @event.OrderStatus);
+        using var activity = _activitySource.StartActivity("OrderStatusChangedToSubmittedIntegrationEvent Handler");
+        activity?.SetTag("order.orderId", @event.OrderId);
+        activity?.SetTag("order.orderStatus", @event.OrderStatus);
+        activity?.SetTag("order.buyerId", @event.BuyerIdentityGuid);
+
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
         await orderStatusNotificationService.NotifyOrderStatusChangedAsync(@event.BuyerIdentityGuid);
-        activity?.SetTag("order.newOrderStatus", @event.OrderStatus);
     }
 }

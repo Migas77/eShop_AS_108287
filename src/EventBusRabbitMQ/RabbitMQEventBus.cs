@@ -98,6 +98,7 @@ public sealed class RabbitMQEventBus(
                     basicProperties: properties,
                     body: body);
 
+                activity?.SetTag("message.body", Encoding.UTF8.GetString(body));
                 return Task.CompletedTask;
             }
             catch (Exception ex)

@@ -1,4 +1,6 @@
-﻿namespace eShop.Ordering.API.Application.DomainEventHandlers;
+﻿using System.Diagnostics;
+
+namespace eShop.Ordering.API.Application.DomainEventHandlers;
 
 public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
                     : INotificationHandler<OrderStartedDomainEvent>
@@ -6,6 +8,7 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
     private readonly ILogger _logger;
     private readonly IBuyerRepository _buyerRepository;
     private readonly IOrderingIntegrationEventService _orderingIntegrationEventService;
+    private readonly ActivitySource _activitySource = new("eShop.Ordering.API.Application.DomainEventHandlers.ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler");
 
     public ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler(
         ILogger<ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler> logger,
@@ -19,18 +22,21 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
 
     public async Task Handle(OrderStartedDomainEvent domainEvent, CancellationToken cancellationToken)
     {
+        using var activity = _activitySource.StartActivity("OrderStartedDomainEvent Handler");
         var cardTypeId = domainEvent.CardTypeId != 0 ? domainEvent.CardTypeId : 1;
         var buyer = await _buyerRepository.FindAsync(domainEvent.UserId);
         var buyerExisted = buyer is not null;
 
         if (!buyerExisted)
         {
+            activity?.AddEvent(new("Create new buyer"));
             buyer = new Buyer(domainEvent.UserId, domainEvent.UserName);
         }
 
         // REVIEW: The event this creates needs to be sent after SaveChanges has propagated the buyer Id. It currently only
         // works by coincidence. If we remove HiLo or if anything decides to yield earlier, it will break.
 
+        activity?.AddEvent(new("Verify or add payment method"));
         buyer.VerifyOrAddPaymentMethod(cardTypeId,
                                         $"Payment Method on {DateTime.UtcNow}",
                                         domainEvent.CardNumber,
@@ -41,6 +47,7 @@ public class ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler
 
         if (!buyerExisted)
         {
+            activity?.AddEvent(new("Add new buyer to repository"));
             _buyerRepository.Add(buyer);
         }
 

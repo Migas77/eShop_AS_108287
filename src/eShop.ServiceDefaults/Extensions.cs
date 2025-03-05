@@ -75,8 +75,13 @@ public static partial class Extensions
                 tracing.AddAspNetCoreInstrumentation()
                     .AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddSource("eShop.WebApp.BasketState")
+                    .AddSource("eShop.WebApp.Services.OrderStatus.IntegrationEvents.OrderStatusChangedToSubmittedIntegrationEventHandler")
                     .AddSource("eShop.ClientApp.OrderService")
+                    .AddSource("eShop.Ordering.API.OrdersApi")
+                    .AddSource("eShop.Ordering.API.CreateOrderCommandHandler")
+                    .AddSource("eShop.Ordering.API.Application.DomainEventHandlers.UpdateOrderWhenBuyerAndPaymentMethodVerifiedDomainEventHandler")
+                    .AddSource("eShop.Ordering.API.Application.DomainEventHandlers.ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler")
+                    .AddSource("eShop.Ordering.Domain.Seedwork.Entity")
                     .AddSource("eShop.Basket.API.IntegrationEvents.EventHandling.OrderStartedIntegrationEventHandler")
                     .AddSource("Experimental.Microsoft.Extensions.AI");                    
             });
