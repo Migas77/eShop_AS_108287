@@ -67,15 +67,17 @@ public class BasketService(
 
     public override async Task<DeleteBasketResponse> DeleteBasket(DeleteBasketRequest request, ServerCallContext context)
     {
-        using var activity = Activity.Current;
+        var activity = Activity.Current;
+
         var userId = context.GetUserIdentity();
         if (string.IsNullOrEmpty(userId))
         {
             ThrowNotAuthenticated();
             logger.LogError("User is not authenticated");
-            activity?.SetStatus(ActivityStatusCode.Error, "User is not authenticated");
+            activity?.AddEvent(new("User is not authenticated"));
         }
         logger.LogInformation("Deleting basket for user {UserId}", userId);
+
         activity?.SetTag("basket.userId", userId);
         await repository.DeleteBasketAsync(userId);
         return new();

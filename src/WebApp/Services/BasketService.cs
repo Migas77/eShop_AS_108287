@@ -20,7 +20,6 @@ public class BasketService(GrpcBasketClient basketClient)
 
     public async Task DeleteBasketAsync()
     {
-        using var activity = Activity.Current;
         await basketClient.DeleteBasketAsync(new DeleteBasketRequest());
     }
 
