@@ -12,9 +12,14 @@ public class BasketService(
     [AllowAnonymous]
     public override async Task<CustomerBasketResponse> GetBasket(GetBasketRequest request, ServerCallContext context)
     {
+        var activity = Activity.Current;
         var userId = context.GetUserIdentity();
+        activity?.SetTag("basket.userId", userId);
+        activity?.AddEvent(new("Get Basket"));
+
         if (string.IsNullOrEmpty(userId))
         {
+            activity?.AddEvent(new("User is not authenticated"));
             return new();
         }
 
@@ -27,9 +32,13 @@ public class BasketService(
 
         if (data is not null)
         {
-            return MapToCustomerBasketResponse(data);
+            var customerBasket = MapToCustomerBasketResponse(data);
+            activity?.SetTag("basket.items.count", customerBasket.Items.Count);
+            activity?.AddEvent(new("Not Empty Basket Found"));
+            return customerBasket;
         }
 
+        activity?.AddEvent(new("Empty Basket or Basket Not Found"));
         return new();
     }
 
