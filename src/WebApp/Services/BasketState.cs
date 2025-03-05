@@ -14,7 +14,23 @@ public class BasketState(
     AuthenticationStateProvider authenticationStateProvider) : IBasketState
 {
     private static readonly Meter _meter = new("eShop.WebApp.BasketState");
-    private static readonly Counter<int> _checkoutCounter = _meter.CreateCounter<int>("basket.checkout.count", description: "Number of basket checkouts");
+    private static readonly Histogram<double> _checkoutValueCounter = _meter.CreateHistogram(
+        "basket.checkout.value",
+        description: "Value of items in basket at checkout",
+        unit: "USD",
+        advice: new InstrumentAdvice<double>
+        {
+            HistogramBucketBoundaries = [ 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 400, 500, 750, 1000 ]
+        }
+    );
+    private static readonly Histogram<int> _checkoutItemsHistogram = _meter.CreateHistogram(
+        "basket.checkout.items",
+        description: "Number of items in basket at checkout",
+        advice: new InstrumentAdvice<int>
+        {
+            HistogramBucketBoundaries = [ 0, 1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50 ]
+        }
+    );
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
     private HashSet<BasketStateChangedSubscription> _changeSubscriptions = new();
 
@@ -81,7 +97,6 @@ public class BasketState(
     public async Task CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
         var activity = Activity.Current;
-        activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
 
         try
         {
@@ -90,7 +105,6 @@ public class BasketState(
                 checkoutInfo.RequestId = Guid.NewGuid();
             }
             activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
-            _checkoutCounter.Add(1);
 
             var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
             var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
@@ -119,6 +133,10 @@ public class BasketState(
                 CardTypeId: checkoutInfo.CardTypeId,
                 Buyer: buyerId,
                 Items: [.. orderItems]);
+
+            _checkoutValueCounter.Record((double)orderItems.Sum(i => i.UnitPrice * i.Quantity));
+            _checkoutItemsHistogram.Record(orderItems.Sum(i => i.Quantity));
+
             await orderingService.CreateOrder(request, checkoutInfo.RequestId);
             await DeleteBasketAsync();
         }
