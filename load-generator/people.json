@@ -1,0 +1,74 @@
+[
+    {
+        "email": "larry_sergei@example.com",
+        "address": "1600 Amphitheatre Parkway",
+        "city": "Mountain View",
+        "state": "CA",
+        "zip": "94043",
+        "country": "United States"
+    },
+    {
+        "email": "bill@example.com",
+        "address": "One Microsoft Way",
+        "city": "Redmond",
+        "state": "WA",
+        "zip": "98052",
+        "country": "United States"
+    },
+    {
+        "email": "steve@example.com",
+        "address": "One Apple Park Way",
+        "city": "Cupertino",
+        "state": "CA",
+        "zip": "95014",
+        "country": "United States"
+    },
+    {
+        "email": "mark@example.com",
+        "address": "1 Hacker Way",
+        "city": "Menlo Park",
+        "state": "CA",
+        "zip": "94025",
+        "country": "United States"
+    },
+    {
+        "email": "jeff@example.com",
+        "address": "410 Terry Ave N",
+        "city": "Seattle",
+        "state": "WA",
+        "zip": "98109",
+        "country": "United States"
+    },
+    {
+        "email": "reed@example.com",
+        "address": "100 Winchester Circle",
+        "city": "Los Gatos",
+        "state": "CA",
+        "zip": "95032",
+        "country": "United States"
+    },
+    {
+        "email": "tobias@example.com",
+        "address": "150 Elgin St",
+        "city": "Ottawa",
+        "state": "ON",
+        "zip": "K2P1L4",
+        "country": "Canada"
+    },
+    {
+        "email": "jack@example.com",
+        "address": "1355 Market St",
+        "city": "San Francisco",
+        "state": "CA",
+        "zip": "94103",
+        "country": "United States"
+    },
+    {
+        "email": "moore@example.com",
+        "address": "2200 Mission College Blvd",
+        "city": "Santa Clara",
+        "state": "CA",
+        "zip": "95054",
+        "country": "United States"
+    }
+]
