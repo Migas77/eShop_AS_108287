@@ -79,10 +79,10 @@ products = [
     "49",   # Arctic Shield Insulated Jacket
 ]
 
-auth_user = {
-    "username": "bob",
-    "password": "Pass123$"
-}
+auth_users = [
+    {"username": "alice", "password": "Pass123$", },
+    {"username": "bob", "password": "Pass123$", },
+]
 
 people_file = open('people.json')
 people = json.load(people_file)
@@ -155,12 +155,15 @@ BASE_URL = "https://localhost:7298/"
 
 class WebsiteBrowserUser(PlaywrightUser):
     wait_time = between(1, 10)
-    headless = False  # to use a headless browser, without a GUI
+    headless = True  # to use a headless browser, without a GUI
+    user_count = 0
 
     @task
     @pw
     async def place_order_flow(self, page: PageWithRetry):
         print("place_order_flow")
+        self.user_id = self.user_count
+        self.user_count += 1
         await self.login(page)
         await self.add_products_to_cart()
         await self.place_order()
@@ -169,8 +172,8 @@ class WebsiteBrowserUser(PlaywrightUser):
     async def login(self, page: PageWithRetry):
         print("login start")
         await page.goto(f"{BASE_URL}user/login?returnUrl=")
-        await page.fill("#Username", auth_user["username"])
-        await page.fill("#Password", auth_user["password"])
+        await page.fill("#Username", auth_users[self.user_id % 2]["username"])
+        await page.fill("#Password", auth_users[self.user_id % 2]["password"])
         await page.click('button[value="login"]')
         await page.wait_for_load_state("networkidle")
         print("login ended")
