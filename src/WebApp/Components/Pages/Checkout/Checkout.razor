@@ -111,8 +111,11 @@
     private async Task HandleValidSubmitAsync()
     {
         Info.CardTypeId = 1;
-        await Basket.CheckoutAsync(Info);
-        Nav.NavigateTo("user/orders");
+        bool success = await Basket.CheckoutAsync(Info);
+        if (success)
+        {
+            Nav.NavigateTo("user/orders");
+        }
     }
 
     private async Task PerformCustomValidationAsync()

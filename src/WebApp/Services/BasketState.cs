@@ -31,6 +31,26 @@ public class BasketState(
             HistogramBucketBoundaries = [ 0, 1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50 ]
         }
     );
+
+    private static readonly Histogram<long> checkoutLatencyHistogram = _meter.CreateHistogram(
+        "basket.checkout.latency",
+        description: "Latency of checkout operation",
+        advice: new InstrumentAdvice<long>
+        {
+            HistogramBucketBoundaries = [ 25, 50, 75, 100, 200, 300, 500, 1000, 2000, 5000, 10000, 30000, 60000, 120000, 300000 ]
+        }
+    );
+
+    private static readonly Counter<int> _checkoutSuccessCounter = _meter.CreateCounter<int>(
+        "basket.checkout.success",
+        description: "Number of successful checkouts"
+    );
+
+    private static readonly Counter<int> _checkoutErrorCounter = _meter.CreateCounter<int>(
+        "basket.checkout.error",
+        description: "Number of failed checkouts"
+    );
+
     private Task<IReadOnlyCollection<BasketItem>>? _cachedBasket;
     private HashSet<BasketStateChangedSubscription> _changeSubscriptions = new();
 
@@ -94,9 +114,10 @@ public class BasketState(
         }
     }
 
-    public async Task CheckoutAsync(BasketCheckoutInfo checkoutInfo)
+    public async Task<bool> CheckoutAsync(BasketCheckoutInfo checkoutInfo)
     {
         var activity = Activity.Current;
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -139,12 +160,21 @@ public class BasketState(
 
             await orderingService.CreateOrder(request, checkoutInfo.RequestId);
             await DeleteBasketAsync();
+            _checkoutSuccessCounter.Add(1);
+            long elapsed = stopwatch.ElapsedMilliseconds;
+            activity?.SetTag("basket.checkout.latency", elapsed);
+            checkoutLatencyHistogram.Record(elapsed);
         }
         catch (Exception ex)
         {
+            _checkoutErrorCounter.Add(1);
+            long elapsed = stopwatch.ElapsedMilliseconds;
+            activity?.SetTag("basket.checkout.latency", elapsed);
+            checkoutLatencyHistogram.Record(elapsed);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            throw;
+            return false;
         }
+        return true;
     }
 
     private Task NotifyChangeSubscribersAsync()
