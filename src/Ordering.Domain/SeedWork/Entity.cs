@@ -27,7 +27,14 @@ public abstract class Entity
     {
         using var activity = _activitySource.StartActivity("AddDomainEvent");
         activity?.SetTag("event.type", eventItem.GetType().Name);
-        activity?.SetTag("event.content", eventItem.ToString());
+        var eventCopy = eventItem.ToString();
+        if (eventItem is OrderStartedDomainEvent orderStarted)
+        {
+            eventCopy = eventCopy
+                .Replace("UserName = " + orderStarted.UserName + ", ", "")
+                .Replace("CardHolderName = " + orderStarted.CardHolderName + ", ", "");
+        }
+        activity?.SetTag("event.content", eventCopy.ToString());
         _domainEvents = _domainEvents ?? new List<INotification>();
         _domainEvents.Add(eventItem);
     }

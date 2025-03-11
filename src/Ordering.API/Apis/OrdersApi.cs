@@ -130,7 +130,7 @@ public static class OrdersApi
         activity?.AddEvent(new("Create Order Async"));
         activity?.SetTag("order.request.id", requestId);
         activity?.SetTag("order.request.userId", request.UserId);
-        activity?.SetTag("order.request.items", request.Items.Count);
+        activity?.SetTag("order.request.items.ids", string.Join(",", request.Items.Select(i => i.ProductId)));
         
         services.Logger.LogInformation(
             "Sending command: {CommandName} - {IdProperty}: {CommandId}",
@@ -152,7 +152,8 @@ public static class OrdersApi
             createCommandActivity?.AddEvent(new("Creating CreateOrderCommand"));
             createCommandActivity?.SetTag("order.request.id", requestId);
             createCommandActivity?.SetTag("order.request.userId", request.UserId);
-            createCommandActivity?.SetTag("order.request.items", request.Items.Count);
+            createCommandActivity?.SetTag("order.request.items.ids", string.Join(",", request.Items.Select(i => i.ProductId)));
+            
 
             var maskedCCNumber = request.CardNumber.Substring(request.CardNumber.Length - 4).PadLeft(request.CardNumber.Length, 'X');
             var createOrderCommand = new CreateOrderCommand(request.Items, request.UserId, request.UserName, request.City, request.Street,

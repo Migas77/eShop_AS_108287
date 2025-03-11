@@ -17,17 +17,7 @@ public class OrderStartedIntegrationEventHandler(
 
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
 
-        var result = await repository.DeleteBasketAsync(@event.UserId);
-        activity?.SetTag("event.basket.deleted", result);
-        // TODO: MINE Sometimes this fails for some reason.
-
-        if (result)
-        {
-            logger.LogInformation("Basket deleted for user {UserId}", @event.UserId);
-        } else {
-            activity?.SetStatus(ActivityStatusCode.Error, "Basket deletion failed");
-            logger.LogError("Basket deletion failed for user {UserId}", @event.UserId);
-        }
+        await repository.DeleteBasketAsync(@event.UserId);
     }
 
         

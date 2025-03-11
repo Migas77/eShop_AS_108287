@@ -39,6 +39,8 @@ public class CreateOrderCommandHandler
                 { "@Command", message }
             }
         ));
+        activity?.SetTag("createCommand.message.userId", message.UserId);
+        activity?.SetTag("createCommand.message.items.ids", message.OrderItems.Select(item => item.ProductId).ToString());
 
         // Add Integration event to clean the basket
         var orderStartedIntegrationEvent = new OrderStartedIntegrationEvent(message.UserId);

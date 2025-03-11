@@ -166,9 +166,9 @@ public static class CatalogApi
     {
         var activity = Activity.Current;
         activity?.AddEvent(new("Get Items By Ids"));
-        activity?.SetTag("catalog.ids.count", ids.Length);
+        activity?.SetTag("catalog.ids", ids);
         var items = await services.Context.CatalogItems.Where(item => ids.Contains(item.Id)).ToListAsync();
-        activity?.SetTag("catalog.items.count", items.Count);
+        activity?.SetTag("catalog.items", string.Join(", ", items.Select(item => item.Name)));
 
         if (ids.Length != items.Count)
         {

@@ -1,4 +1,5 @@
-﻿namespace eShop.Identity.API.Services
+﻿using System.Diagnostics;
+namespace eShop.Identity.API.Services
 {
     public class ProfileService : IProfileService
     {
@@ -11,29 +12,68 @@
 
         public async Task GetProfileDataAsync(ProfileDataRequestContext context)
         {
-            var subject = context.Subject ?? throw new ArgumentNullException(nameof(context.Subject));
+            var activity = Activity.Current;
+            activity?.AddEvent(new("Get Profile Data"));
+
+            var subject = context.Subject;
+            if (subject == null)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, "Subject is null");
+                activity?.AddEvent(new("ArgumentNullException", tags: new ActivityTagsCollection { 
+                    { "error.type", "ArgumentNullException" },
+                    { "error.message", "Subject cannot be null" }
+                }));
+                throw new ArgumentNullException(nameof(context.Subject));
+            }
 
             var subjectId = subject.Claims.Where(x => x.Type == "sub").FirstOrDefault()?.Value;
+            activity?.SetTag("subject.id", subjectId);
 
             var user = await _userManager.FindByIdAsync(subjectId);
-            if (user == null)
+            if (user == null){
+                activity?.SetStatus(ActivityStatusCode.Error, "User not found");
+                activity?.AddEvent(new("User not found", tags: new ActivityTagsCollection { 
+                    { "error.type", "ArgumentException" },
+                    { "error.message", "Invalid subject identifier" }
+                }));
                 throw new ArgumentException("Invalid subject identifier");
+            }
+                
 
+            activity?.SetTag("user.id", user.Id);
+            activity?.AddEvent(new("Getting Claims from User", tags: new ActivityTagsCollection { 
+                { "user.id", user.Id },
+            }));
             var claims = GetClaimsFromUser(user);
             context.IssuedClaims = claims.ToList();
         }
 
         public async Task IsActiveAsync(IsActiveContext context)
         {
-            var subject = context.Subject ?? throw new ArgumentNullException(nameof(context.Subject));
+            var activity = Activity.Current;
+            activity?.AddEvent(new("Is Active Async"));
+
+            var subject = context.Subject;
+            if (subject == null)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, "Subject is null");
+                activity?.AddEvent(new("ArgumentNullException", tags: new ActivityTagsCollection { 
+                    { "error.type", "ArgumentNullException" },
+                    { "error.message", "Subject cannot be null" }
+                }));
+                throw new ArgumentNullException(nameof(context.Subject));
+            }
 
             var subjectId = subject.Claims.Where(x => x.Type == "sub").FirstOrDefault()?.Value;
+            activity?.SetTag("subject.id", subjectId);
+
             var user = await _userManager.FindByIdAsync(subjectId);
 
             context.IsActive = false;
 
             if (user != null)
             {
+                activity?.SetTag("user.id", user.Id);
                 if (_userManager.SupportsUserSecurityStamp)
                 {
                     var security_stamp = subject.Claims.Where(c => c.Type == "security_stamp").Select(c => c.Value).SingleOrDefault();
@@ -50,6 +90,8 @@
                     !user.LockoutEnd.HasValue ||
                     user.LockoutEnd <= DateTime.UtcNow;
             }
+
+            activity?.SetTag("user.isActive", context.IsActive);
         }
 
         private IEnumerable<Claim> GetClaimsFromUser(ApplicationUser user)

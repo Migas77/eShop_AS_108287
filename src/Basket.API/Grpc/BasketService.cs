@@ -34,6 +34,7 @@ public class BasketService(
         {
             var customerBasket = MapToCustomerBasketResponse(data);
             activity?.SetTag("basket.items.count", customerBasket.Items.Count);
+            activity?.SetTag("basket.items.ids", string.Join(",", customerBasket.Items.Select(i => i.ProductId)));
             activity?.AddEvent(new("Not Empty Basket Found"));
             return customerBasket;
         }

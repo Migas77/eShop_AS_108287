@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using Polly.Retry;
+using System.Text.RegularExpressions;
 
 public sealed class RabbitMQEventBus(
     ILogger<RabbitMQEventBus> logger,
@@ -98,7 +99,10 @@ public sealed class RabbitMQEventBus(
                     basicProperties: properties,
                     body: body);
 
-                activity?.SetTag("message.body", Encoding.UTF8.GetString(body));
+                var message = Encoding.UTF8.GetString(body);
+                string modifiedMessage = Regex.Replace(message, @"\s*""BuyerName"":\s*""[^""]*"",?\s*\n?", "");
+                activity?.SetTag("message", modifiedMessage);
+
                 return Task.CompletedTask;
             }
             catch (Exception ex)
@@ -158,7 +162,8 @@ public sealed class RabbitMQEventBus(
 
         try
         {
-            activity?.SetTag("message", message);
+            string modifiedMessage = Regex.Replace(message, @"\s*""BuyerName"":\s*""[^""]*"",?\s*\n?", "");
+            activity?.SetTag("message", modifiedMessage);
 
             if (message.Contains("throw-fake-exception", StringComparison.InvariantCultureIgnoreCase))
             {
