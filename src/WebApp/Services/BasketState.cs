@@ -135,7 +135,7 @@ public class BasketState(
 
             // Get details for the items in the basket
             var orderItems = await FetchBasketItemsAsync();
-            activity?.SetTag("basket.items", string.Join(",", orderItems.Select(i => $"({i.ProductId},{i.Quantity},{i.UnitPrice})")));
+            activity?.SetTag("basket.items", string.Join(";", orderItems.Select(i => $"({i.ProductId},{i.Quantity},{i.UnitPrice})")));
             activity?.SetTag("basket.total", orderItems.Sum(i => i.UnitPrice * i.Quantity));
 
             // Call into Ordering.API to create the order using those details

@@ -33,8 +33,8 @@ public class BasketService(
         if (data is not null)
         {
             var customerBasket = MapToCustomerBasketResponse(data);
-            activity?.SetTag("basket.items.count", customerBasket.Items.Count);
-            activity?.SetTag("basket.items.ids", string.Join(",", customerBasket.Items.Select(i => i.ProductId)));
+            activity?.SetTag("basket.items", string.Join(";", customerBasket.Items.Select(i => $"({i.ProductId},{i.Quantity})")));
+            activity?.SetTag("basket.items.unique.count", customerBasket.Items.Count);
             activity?.AddEvent(new("Not Empty Basket Found"));
             return customerBasket;
         }

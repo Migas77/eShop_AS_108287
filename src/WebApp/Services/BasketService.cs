@@ -14,7 +14,7 @@ public class BasketService(GrpcBasketClient basketClient)
         var result = await basketClient.GetBasketAsync(new ());
         
         var basket = MapToBasket(result);
-        activity?.SetTag("basket.items.count", basket.Count);
+        activity?.SetTag("basket.items.unique.count", basket.Count);
         return basket;
     }
 
