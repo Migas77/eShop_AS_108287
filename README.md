@@ -15,7 +15,6 @@ I integrated Jaeger, Prometheus, and Grafana within .NET code by creating the re
 ```powershell
 dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj
 ```
----
 
 ## Introduction
 
@@ -412,4 +411,161 @@ public class BasketState(
 }
 ```
 
-Bear in mind that the custom metrics defined by me are not the only ones that are present on both prometheus and grafana dashboards. All the metrics provided by Aspire are also present, as we'll later be shown.
+Bear in mind that the custom metrics defined by me are not the only ones that are present on both prometheus and grafana dashboards. All the metrics provided by Aspire are also present, as will later be shown.
+
+
+## Masking Sensitive Data
+
+As previously shown, data such as the userId or credit card information was masked in the traces presented in the section [Tracing](#tracing) of this report. In this section, I will outline the process used to mask this sensitive information from traces — more specifically, it will be explained the approach to mask the tag values present in activities — and logs.
+
+As one of the goals of the project was to mask or exclude sensitive data not only from telemetry, but also from logs, I've created a common static class DataMasking (in [eShop.ServiceDefaults/Processors/DataMasking.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Processors/DataMasking.cs#L5)), where the following is defined:
+- a private dictionary ``SensitiveKeys`` mapping the keys to be masked with the minimum number of masked characters in the corresponding value;
+- a function ``Mask(KeyValuePair<string, string> tag)``, which given a key-value pair (a tag from an activity), masks the value according to the keys and values specified in the ``SensitiveKeys`` dictionary;
+- a function ``MaskPairInString``, which given a string (from a Log), uses regex to find and mask the portion of the string containing sensitive information, according to the pattern "{sensitiveKey}:{value}".
+
+The organization of the DataMasking class was designed according to the following principles in mind: 
+- **Single Responsibility Principle** (SRP) — The class is solely responsible for handling the masking of sensitive information, ensuring that all logic related to data masking is centralized in one place.
+- **Single Source of Truth** for sensitive keys: the private dictionary ``SensitiveKeys`` defines all keys that need masking along with the minimum number of characters that should be masked in their corresponding values.
+
+```c#
+internal static class DataMasking
+{
+  private static readonly Dictionary<string, int> SensitiveKeys = new()
+  {
+    // Comparison bellow is case insensitive
+    { "userId", 33 },
+    { "buyerId", 33 },
+    { "subjectId", 33 },
+    { "BuyerIdentityGuid", 33 },
+    { "userName" , 128 },
+    { "buyerName" , 128 },
+    { "CardNumber",  13 },
+    { "CardHolderName", 128 }
+  };
+
+  // Bear in mind the use of StringComparison.OrdinalIgnoreCase
+
+  internal static string? Mask(KeyValuePair<string, string> tag) {
+    var matchingKey = SensitiveKeys.Keys.FirstOrDefault(k => tag.Key.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+    if (matchingKey != default && tag.Value?.ToString() is string strValue)
+    {
+      var maskLength = Math.Min(SensitiveKeys[matchingKey], strValue.Length);
+      var unMaskedLength = strValue.Length - maskLength;
+      var unmaskedPrefix = unMaskedLength > 0 ? strValue[..unMaskedLength] : "";
+      var maskedSuffix = new string('*', maskLength);
+      return unmaskedPrefix + maskedSuffix;
+    }
+
+    return null;
+  }
+
+  internal static string? MaskPairInString(string input){
+    var matchingKey = SensitiveKeys.Keys.FirstOrDefault(k => input.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+    if (matchingKey != default) {
+      var regex = new Regex($"{matchingKey}:([^,|}}|\\s]+)", RegexOptions.IgnoreCase);
+      var match = regex.Match(input);
+      if (match.Success) {
+        var value = match.Groups[1].Value;
+        var maskedValue = Mask(new KeyValuePair<string, string>(matchingKey, value));
+        var actualKey = input.Substring(input.IndexOf(matchingKey, StringComparison.OrdinalIgnoreCase), matchingKey.Length);
+        return input.Replace($"{actualKey}:{value}", $"{actualKey}:{maskedValue}");
+      }
+    }
+    
+    return null;
+  }
+}
+```
+
+To mask sentitive values from both the tags of the activities in a trace and the application Logs, I've defined processors which are introduced in the file [eShop.ServiceDefaults/Extensions.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Extensions.cs#L100) in the following lines:
+- ``builder.Services.ConfigureOpenTelemetryLoggerProvider(logging => logging.AddProcessor<DataMaskingLogsProcessor>().AddOtlpExporter());`` for logs.
+- ``builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddProcessor<DataMaskingActivityProcessor>().AddOtlpExporter());`` for traces.
+
+In OpenTelemetry, a processor is a component that allows for the modification, enrichment, or filtering of telemetry data (such as traces, metrics, or logs) before it is exported to a backend (e.g., Jaeger, Prometheus, or Elastic). In this case, I've modified the values of tags and logs so that sensitive information is not leaked.
+
+```c#
+private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
+{
+  var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+  if (useOtlpExporter)
+  {
+    builder.Services.ConfigureOpenTelemetryLoggerProvider(logging => logging.AddProcessor<DataMaskingLogsProcessor>().AddOtlpExporter());
+    builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddOtlpExporter());
+    builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddProcessor<DataMaskingActivityProcessor>().AddOtlpExporter());
+  }
+
+  // ...
+
+  return builder;
+}
+```
+
+DataMaskingLogsProcessor and DataMaskingActivityProcessor are both processors that utilize DataMasking static class to mask the values of logs and tags, respectivelu.
+
+
+### Masking Sensitive Data from Traces
+
+The following class DataMaskingActivityProcessor (source: [eShop.ServiceDefaults/Processors/DataMaskingActivityProcessor.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Processors/DataMaskingActivityProcessor.cs#L17)), inheriting from ``BaseProcessor<Activity>``, overrides ``void OnEnd(Activity activity)`` to parse the activities tags and mask the corresponding values.
+
+In the bellow code, it's highlighted the masking of a **simple tag containing only a string value** and the **masking of a tag containing a more structured tag value**, namely a dictionary with key value pairs, where the key/value of this dictionary will correspond (or not) to the sensitive key-value pairs. The results 
+
+
+```c#
+public class DataMaskingActivityProcessor : BaseProcessor<Activity>
+{
+  private readonly ILogger<DataMaskingActivityProcessor> _logger;
+
+  public DataMaskingActivityProcessor(ILogger<DataMaskingActivityProcessor> logger)
+  {
+    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+  }
+  
+  public override void OnEnd(Activity activity)
+  {
+    if (activity == null) return;
+
+    var tags = activity.Tags.ToList();
+
+    foreach (var tag in tags)
+    {
+      if (tag.Value == null) continue;
+
+      if (tag.Value.StartsWith("{") && tag.Value.EndsWith("}")) {
+        // Process Nested Dictionary Tags (Events - RabbitMQ Publish/Receive mostly)
+        try {
+          var dictionary = JsonConvert.DeserializeObject<Dictionary<string, object>>(tag.Value);
+          if (dictionary != null)
+          {
+            foreach (var nestedTag in dictionary) {
+              if (nestedTag.Value == null || nestedTag.Value is not string value) continue;
+              var maskedValue = DataMasking.Mask(new KeyValuePair<string, string>(nestedTag.Key, value));
+              if (maskedValue != null) {
+                dictionary[nestedTag.Key] = maskedValue;
+              }
+            }
+            activity.SetTag(tag.Key, JsonConvert.SerializeObject(dictionary));
+          }
+        } catch (JsonException ex) {
+          _logger.LogError(ex, "Error deserializing dictionary from tag value");
+        }
+      } else {
+        // Process Simple Activity Tags
+        var maskedValue = DataMasking.Mask(new KeyValuePair<string, string>(tag.Key, tag.Value));
+        if (maskedValue != null) {
+          activity.SetTag(tag.Key, maskedValue);
+        }
+      }
+    }
+  }
+}
+```
+
+The next image highlights the masking of a simple tag with a regular string value (userId), whereas the second image showcases the nested masking mentioned in the previous code (tag event.content contains a dictionary with sensitive keys UserId, UserName, CardNumber and CardHolderName).
+
+![simple_masking](img/simple_masking.png)
+
+![nested_masking](img/nested_masking.png)
+
+
