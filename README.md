@@ -204,3 +204,212 @@ Finally, the webapp makes a POST request to BasketAPI.Basket/DeleteBasket in ord
 ![checkout_trace_7](img/trace_7.png)
 
 As it's possible to conclude, the feature is traced end-to-end and full flow corresponds to the one highlighted on the sequence diagram.
+
+## Metrics
+
+Metrics are essential for observability, providing quantitative insights into system performance, resource utilization, and application health. With this in mind, I've configured Prometheus a widely used open-source monitoring system, which collects and stores metrics using a time-series database. In order to achieve this, I had to make the following changes in the configuration file [eShop.ServiceDefaults/Extensions.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Extensions.cs#L114):
+- add line ``builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddPrometheusExporter());`` to configure prometheus exporter for metrics;
+- uncomment line ``app.MapPrometheusScrapingEndpoint();``  to enable scrape endpoints for each service, allowing Prometheus to collect the metrics.
+
+
+```c#
+private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
+{
+  // ...
+
+  var useCustomOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["CUSTOM_OTEL_EXPORTER_OTLP_ENDPOINT"]);
+  if (useCustomOtlpExporter)
+  {   
+      var endpoint = builder.Configuration["CUSTOM_OTEL_EXPORTER_OTLP_ENDPOINT"];
+      builder.Services.ConfigureOpenTelemetryLoggerProvider(logging => logging.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
+      builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
+      builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
+  }
+
+  builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddPrometheusExporter());
+
+  return builder;
+}
+
+// ...
+
+public static WebApplication MapDefaultEndpoints(this WebApplication app)
+{
+    // Uncomment the following line to enable the Prometheus endpoint (requires the OpenTelemetry.Exporter.Prometheus.AspNetCore package)
+    app.MapPrometheusScrapingEndpoint();
+
+    // ...
+
+    return app;
+}
+```
+
+Furthermore, I had to specify prometheus target and map it to the docker container at the specified path so that It actually gathers the metrics, which is present at the [datasources/prometheus_config.yml file](https://github.com/Migas77/eShop_AS_108287/blob/main/datasources/prometheus_config.yml):
+
+```yml
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # HTTPS
+  # 'https://localhost:5243', # Identity API HTTPS
+  # 'https://localhost:7298', # WebApp HTTPS
+  # 'https://localhost:7260'  # Webhooks Client HTTPS
+  - job_name: 'eshop-identity-api-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ['host.docker.internal:5243']
+        labels:
+          service: 'identity-api-https'
+
+  - job_name: 'eshop-webapp-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ['host.docker.internal:7298']
+        labels:
+          service: 'webapp-https'
+
+  - job_name: 'eshop-webhooks-client-https'
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets: ['host.docker.internal:7260']
+        labels:
+            service: 'webhooks-client-https'
+
+  # HTTP
+  # ...
+
+```
+
+At the following image, it's provided evidence on the health status of the configured targets. As it's possible conclude, the presented targets are healthy and therefore, prometheus can scrape the corresponding/existing metrics.
+
+![prometheus_health_targets](img/prometheus_health_targets.png)
+
+The only thing remaining is to present how did I define the open telemetry metrics. In the following code (source: [WebApp/Services/BasketState.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/WebApp/Services/BasketState.cs#L16)), I define the meter source and 5 different metrics:
+- basket.checkout.value (histogram) - To measure the total value of the items in the basket at checkout.
+- basket.checkout.items (histogram) - To measure the number of items at checkout.
+- basket.checkout.latency (histogram) - Histogram metric to measure the latency of the checkout/place order flow.
+- basket.checkout.success (counter) & basket.checkout.error (counter) - Counters to measure the success/error rate of the checkout process.
+
+These metrics are used/consumed/triggered by calling ``Record`` or ``Add`` functions for the histogram and counter metrics, respectively.
+
+```c#
+public class BasketState(
+    BasketService basketService,
+    CatalogService catalogService,
+    OrderingService orderingService,
+    AuthenticationStateProvider authenticationStateProvider) : IBasketState
+{
+  private static readonly Meter _meter = new("eShop.WebApp.BasketState");
+  private static readonly Histogram<double> _checkoutValueCounter = _meter.CreateHistogram(
+      "basket.checkout.value",
+      description: "Value of items in basket at checkout",
+      unit: "USD",
+      advice: new InstrumentAdvice<double>
+      {
+          HistogramBucketBoundaries = [ 0, 25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 400, 500, 750, 1000 ]
+      }
+  );
+  private static readonly Histogram<int> _checkoutItemsHistogram = _meter.CreateHistogram(
+      "basket.checkout.items",
+      description: "Number of items in basket at checkout",
+      advice: new InstrumentAdvice<int>
+      {
+          HistogramBucketBoundaries = [ 0, 1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30, 40, 50 ]
+      }
+  );
+  private static readonly Histogram<long> checkoutLatencyHistogram = _meter.CreateHistogram(
+      "basket.checkout.latency",
+      description: "Latency of checkout operation",
+      advice: new InstrumentAdvice<long>
+      {
+          HistogramBucketBoundaries = [ 25, 50, 75, 100, 200, 300, 500, 1000, 2000, 5000, 10000, 30000, 60000, 120000, 300000 ]
+      }
+  );
+  private static readonly Counter<int> _checkoutSuccessCounter = _meter.CreateCounter<int>(
+      "basket.checkout.success",
+      description: "Number of successful checkouts"
+  );
+
+  private static readonly Counter<int> _checkoutErrorCounter = _meter.CreateCounter<int>(
+      "basket.checkout.error",
+      description: "Number of failed checkouts"
+  );
+
+  // ...
+
+  public async Task<bool> CheckoutAsync(BasketCheckoutInfo checkoutInfo)
+  {
+    var activity = Activity.Current;
+    var stopwatch = Stopwatch.StartNew();
+
+    try
+    {
+      if (checkoutInfo.RequestId == default)
+      {
+        checkoutInfo.RequestId = Guid.NewGuid();
+      }
+      activity?.SetTag("basket.requestId", checkoutInfo.RequestId);
+
+      var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
+      var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
+
+      activity?.SetTag("buyerId", buyerId);
+      activity?.SetTag("userName", userName);
+
+      // Get details for the items in the basket
+      var orderItems = await FetchBasketItemsAsync();
+      activity?.SetTag("basket.items", string.Join(";", orderItems.Select(i => $"({i.ProductId},{i.Quantity},{i.UnitPrice})")));
+      activity?.SetTag("basket.total", orderItems.Sum(i => i.UnitPrice * i.Quantity));
+
+      // Call into Ordering.API to create the order using those details
+      var request = new CreateOrderRequest(
+          UserId: buyerId,
+          UserName: userName,
+          City: checkoutInfo.City!,
+          Street: checkoutInfo.Street!,
+          State: checkoutInfo.State!,
+          Country: checkoutInfo.Country!,
+          ZipCode: checkoutInfo.ZipCode!,
+          CardNumber: "1111222233334444",
+          CardHolderName: "TESTUSER",
+          CardExpiration: DateTime.UtcNow.AddYears(1),
+          CardSecurityNumber: "111",
+          CardTypeId: checkoutInfo.CardTypeId,
+          Buyer: buyerId,
+          Items: [.. orderItems]);
+
+      _checkoutValueCounter.Record((double)orderItems.Sum(i => i.UnitPrice * i.Quantity));
+      _checkoutItemsHistogram.Record(orderItems.Sum(i => i.Quantity));
+
+      await orderingService.CreateOrder(request, checkoutInfo.RequestId);
+      await DeleteBasketAsync();
+      _checkoutSuccessCounter.Add(1);
+      long elapsed = stopwatch.ElapsedMilliseconds;
+      activity?.SetTag("basket.checkout.latency", elapsed);
+      checkoutLatencyHistogram.Record(elapsed);
+    }
+    catch (Exception ex)
+    {
+      _checkoutErrorCounter.Add(1);
+      long elapsed = stopwatch.ElapsedMilliseconds;
+      activity?.SetTag("basket.checkout.latency", elapsed);
+      checkoutLatencyHistogram.Record(elapsed);
+      activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+      return false;
+    }
+    
+    return true;
+  }
+
+  // ...
+}
+```
+
+Bear in mind that the custom metrics defined by me are not the only ones that are present on both prometheus and grafana dashboards. All the metrics provided by Aspire are also present, as we'll later be shown.
