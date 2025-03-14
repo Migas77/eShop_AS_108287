@@ -94,13 +94,50 @@ The next figure, showcases **custom created tags related to the checkout process
 - basket.total - the total price of the basket.
 - buyerId - the userId corresponding to the buyer. As you can see, the information for the buyerId is masked (c97*********************************). Later, the process of masking this and other tags will also be explained.
 
+All of these tasks reuse a pre-existing span and some of them are created in the following code snippet
+
 There are also other tags, already provided in the aspire implementation such as "url.path". It's also important to note the **use of events** to pinpoint/mark/record important events that provide additional context about what happened within the span's execution (in this case, I provide a simple event - "Get Basket Async").
 
 ![checkout_trace_1](img/trace_1.png)
 
-The first part, of the trace is constitued by a POST request to the BasketApi.Basket/GetBasket endpoint. Yet again, there are defined custom tags basket.items and basket.items.unique.count, representing the id and quantity of each item in the basket and the number of different items in the basket respectively — these simple custom tags are present throghout the whole trace and, therefore, I'll refrain from mentioning them again so not to extend the size of this report. As previously, there are also defined two subsequent events showcasing when the get basket request was made and when an not empty basket was found.
+The first part, of the trace is constitued by a POST request to the BasketApi.Basket/GetBasket endpoint. Yet again, there are defined custom tags basket.items and basket.items.unique.count, representing the id and quantity of each item in the basket and the number of different items in the basket, respectively — these simple custom tags are present throghout the whole trace and, therefore, I'll refrain from explicitely enumerating them again so not to extend the size of this report. As previously, there are also defined two subsequent events showcasing when the get basket request was made and when an not empty basket was found. Bellow, it's also provided a code snippet (from file [src/Basket.API/Grpc/BasketService.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Basket.API/Grpc/BasketService.cs)) for the creation of said tags and events within a pre-existing activity (Activity.Current).
 
-At this image, it's possible to verify the **end-to-end nature of the trace**, which starts in the webapp, goes through the basket-api service and onto the redis database to retrieve the basket items.
+```c#
+public override async Task<CustomerBasketResponse> GetBasket(GetBasketRequest request, ServerCallContext context)
+{
+  var activity = Activity.Current;
+  var userId = context.GetUserIdentity();
+  activity?.SetTag("userId", userId);
+  activity?.AddEvent(new("Get Basket"));
+
+  if (string.IsNullOrEmpty(userId))
+  {
+    activity?.AddEvent(new("User is not authenticated"));
+    return new();
+  }
+
+  if (logger.IsEnabled(LogLevel.Debug))
+  {
+    logger.LogDebug("Begin GetBasketById call from method {Method} for basket id {Id}", context.Method, userId);
+  }
+
+  var data = await repository.GetBasketAsync(userId);
+
+  if (data is not null)
+  {
+    var customerBasket = MapToCustomerBasketResponse(data);
+    activity?.SetTag("basket.items", string.Join(";", customerBasket.Items.Select(i => $"({i.ProductId},{i.Quantity})")));
+    activity?.SetTag("basket.items.unique.count", customerBasket.Items.Count);
+    activity?.AddEvent(new("Not Empty Basket Found"));
+    return customerBasket;
+  }
+
+  activity?.AddEvent(new("Empty Basket or Basket Not Found"));
+  return new();
+}
+```
+
+In addition to what has already been mentioned at this image, it's also possible to verify the **end-to-end nature of the trace**, which starts in the webapp, goes through the basket-api service and onto the redis database to retrieve the basket items.
 
 ![checkout_trace_2](img/trace_2.png)
 
@@ -110,9 +147,9 @@ At Figure 3, it's possible to observe the next steps of the checkout flow:
 
 ![checkout_trace_3](img/trace_3.png)
 
-As mentioned previously, I think that's important to explicitely register all the events throughout the checkout process. The function AddDomainEvent present in the [Entity.cs file](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Ordering.Domain/SeedWork/Entity.cs#L28) , was the ideal place to register all Domain Events. Once again, sensitive information as UserId, UserName, CardNumber and CardHolderName were also masked. Bear in mind that '*' corresponds to the used masking character and X was present on the credit card number of said user, as presented in the code snippet bellow and the following [file](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Identity.API/UsersSeed.cs#L12).
+As mentioned previously, I think that's important to explicitely register all the events throughout the checkout process. The function AddDomainEvent present in the [Entity.cs file](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Ordering.Domain/SeedWork/Entity.cs#L28) was the ideal place to register all Domain Events (in a new activity). Once again, sensitive information as UserId, UserName, CardNumber and CardHolderName were also masked. Bear in mind that '*' corresponds to the used masking character and X was present on the credit card number of said user, as presented in the code snippet bellow and the following [file](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Identity.API/UsersSeed.cs#L12).
 
-At the image, we can also conclude that the OrderStartedDomainEvent (present in event.type tag) is catched by an handler is handled by an event handler (last trace), with the following events being registered: "Create new buyer", "Verify or add payment method" and "Add new buyer to repository".
+At the image, we can also conclude that the OrderStartedDomainEvent (present in event.type tag) is handled by an event handler (last trace), with the following events being registered: "Create new buyer", "Verify or add payment method" and "Add new buyer to repository".
 	
 
 
