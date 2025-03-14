@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace eShop.ServiceDefaults.Processors;
 
 internal static class DataMasking
@@ -26,6 +28,24 @@ internal static class DataMasking
             var maskedSuffix = new string('*', maskLength);
             return unmaskedPrefix + maskedSuffix;
         }
+
+        return null;
+    }
+
+    internal static string? MaskPairInString(string input){
+        var matchingKey = SensitiveKeys.Keys.FirstOrDefault(k => input.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+        if (matchingKey != default) {
+            var regex = new Regex($"{matchingKey}:([^,|}}|\\s]+)", RegexOptions.IgnoreCase);
+            var match = regex.Match(input);
+            if (match.Success) {
+                var value = match.Groups[1].Value;
+                var maskedValue = Mask(new KeyValuePair<string, string>(matchingKey, value));
+                var actualKey = input.Substring(input.IndexOf(matchingKey, StringComparison.OrdinalIgnoreCase), matchingKey.Length);
+                return input.Replace($"{actualKey}:{value}", $"{actualKey}:{maskedValue}");
+            }
+        }
+        
         return null;
     }
 }

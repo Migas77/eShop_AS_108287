@@ -77,7 +77,7 @@ public class BasketService(
             logger.LogError("User is not authenticated");
             activity?.AddEvent(new("User is not authenticated"));
         }
-        logger.LogInformation("Deleting basket for user {UserId}", userId);
+        logger.LogInformation("Deleting basket for userId:{UserId}", userId);
 
         activity?.SetTag("userId", userId);
         await repository.DeleteBasketAsync(userId);
