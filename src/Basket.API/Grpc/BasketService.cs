@@ -14,7 +14,7 @@ public class BasketService(
     {
         var activity = Activity.Current;
         var userId = context.GetUserIdentity();
-        activity?.SetTag("basket.userId", userId);
+        activity?.SetTag("userId", userId);
         activity?.AddEvent(new("Get Basket"));
 
         if (string.IsNullOrEmpty(userId))
@@ -79,7 +79,7 @@ public class BasketService(
         }
         logger.LogInformation("Deleting basket for user {UserId}", userId);
 
-        activity?.SetTag("basket.userId", userId);
+        activity?.SetTag("userId", userId);
         await repository.DeleteBasketAsync(userId);
         return new();
     }

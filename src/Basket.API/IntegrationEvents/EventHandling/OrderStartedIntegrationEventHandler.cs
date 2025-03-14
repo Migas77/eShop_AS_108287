@@ -13,7 +13,7 @@ public class OrderStartedIntegrationEventHandler(
     {
         using var activity = _activitySource.StartActivity("OrderStartedIntegrationEvent handler");
         activity?.SetTag("event.id", @event.Id);
-        activity?.SetTag("event.userId", @event.UserId);
+        activity?.SetTag("userId", @event.UserId);
 
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
 

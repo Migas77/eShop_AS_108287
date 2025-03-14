@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using eShop.ServiceDefaults.Processors;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,9 +106,15 @@ public static partial class Extensions
         if (useCustomOtlpExporter)
         {   
             var endpoint = builder.Configuration["CUSTOM_OTEL_EXPORTER_OTLP_ENDPOINT"];
-            builder.Services.Configure<OpenTelemetryLoggerOptions>(logging => logging.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
+            builder.Services.Configure<OpenTelemetryLoggerOptions>(logging => logging.AddOtlpExporter(options => {
+                options.Endpoint = new Uri(endpoint!);
+                
+            }));
+            builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => {
+                tracing.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!));
+                tracing.AddProcessor<DataMaskingActivityProcessor>();
+            });
             builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
-            builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddOtlpExporter(options => options.Endpoint = new Uri(endpoint!)));
         }
 
 

@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace eShop.Ordering.Domain.Seedwork;
 
@@ -27,14 +29,14 @@ public abstract class Entity
     {
         using var activity = _activitySource.StartActivity("AddDomainEvent");
         activity?.SetTag("event.type", eventItem.GetType().Name);
-        var eventCopy = eventItem.ToString();
-        if (eventItem is OrderStartedDomainEvent orderStarted)
+        var eventCopy = JsonConvert.DeserializeObject(JsonConvert.SerializeObject(eventItem));
+        if (eventCopy is JObject eventObj)
         {
-            eventCopy = eventCopy
-                .Replace("UserName = " + orderStarted.UserName + ", ", "")
-                .Replace("CardHolderName = " + orderStarted.CardHolderName + ", ", "");
+            eventObj.Property("Order")?.Remove();
+            eventObj.Property("Buyer")?.Remove();
+            eventObj.Property("Payment")?.Remove();
         }
-        activity?.SetTag("event.content", eventCopy.ToString());
+        activity?.SetTag("event.content", JsonConvert.SerializeObject(eventCopy));
         _domainEvents = _domainEvents ?? new List<INotification>();
         _domainEvents.Add(eventItem);
     }

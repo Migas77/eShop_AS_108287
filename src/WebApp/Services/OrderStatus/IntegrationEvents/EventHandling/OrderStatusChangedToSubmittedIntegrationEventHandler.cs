@@ -14,7 +14,7 @@ public class OrderStatusChangedToSubmittedIntegrationEventHandler(
         using var activity = _activitySource.StartActivity("OrderStatusChangedToSubmittedIntegrationEvent Handler");
         activity?.SetTag("order.orderId", @event.OrderId);
         activity?.SetTag("order.orderStatus", @event.OrderStatus);
-        activity?.SetTag("order.buyerId", @event.BuyerIdentityGuid);
+        activity?.SetTag("buyerId", @event.BuyerIdentityGuid);
 
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
         await orderStatusNotificationService.NotifyOrderStatusChangedAsync(@event.BuyerIdentityGuid);

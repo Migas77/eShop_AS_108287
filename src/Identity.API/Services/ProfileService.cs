@@ -27,7 +27,7 @@ namespace eShop.Identity.API.Services
             }
 
             var subjectId = subject.Claims.Where(x => x.Type == "sub").FirstOrDefault()?.Value;
-            activity?.SetTag("subject.id", subjectId);
+            activity?.SetTag("subjectId", subjectId);
 
             var user = await _userManager.FindByIdAsync(subjectId);
             if (user == null){
@@ -40,7 +40,7 @@ namespace eShop.Identity.API.Services
             }
                 
 
-            activity?.SetTag("user.id", user.Id);
+            activity?.SetTag("userId", user.Id);
             activity?.AddEvent(new("Getting Claims from User", tags: new ActivityTagsCollection { 
                 { "user.id", user.Id },
             }));
@@ -65,7 +65,7 @@ namespace eShop.Identity.API.Services
             }
 
             var subjectId = subject.Claims.Where(x => x.Type == "sub").FirstOrDefault()?.Value;
-            activity?.SetTag("subject.id", subjectId);
+            activity?.SetTag("subjectId", subjectId);
 
             var user = await _userManager.FindByIdAsync(subjectId);
 
@@ -73,7 +73,7 @@ namespace eShop.Identity.API.Services
 
             if (user != null)
             {
-                activity?.SetTag("user.id", user.Id);
+                activity?.SetTag("userId", user.Id);
                 if (_userManager.SupportsUserSecurityStamp)
                 {
                     var security_stamp = subject.Claims.Where(c => c.Type == "security_stamp").Select(c => c.Value).SingleOrDefault();

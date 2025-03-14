@@ -32,7 +32,7 @@ public class OrderService : IOrderService
         using var activity = _activitySource.StartActivity("CreateOrder");
         try
         {
-            activity?.SetTag("order.userId", newOrder.UserId);
+            activity?.SetTag("userId", newOrder.UserId);
             activity?.SetTag("order.total", newOrder.Total);
             activity?.SetTag("order.items.count", newOrder.OrderItems.Count);
 

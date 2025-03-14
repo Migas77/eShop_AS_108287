@@ -100,8 +100,7 @@ public sealed class RabbitMQEventBus(
                     body: body);
 
                 var message = Encoding.UTF8.GetString(body);
-                string modifiedMessage = Regex.Replace(message, @"\s*""BuyerName"":\s*""[^""]*"",?\s*\n?", "");
-                activity?.SetTag("message", modifiedMessage);
+                activity?.SetTag("message", message);
 
                 return Task.CompletedTask;
             }
@@ -162,8 +161,7 @@ public sealed class RabbitMQEventBus(
 
         try
         {
-            string modifiedMessage = Regex.Replace(message, @"\s*""BuyerName"":\s*""[^""]*"",?\s*\n?", "");
-            activity?.SetTag("message", modifiedMessage);
+            activity?.SetTag("message", message);
 
             if (message.Contains("throw-fake-exception", StringComparison.InvariantCultureIgnoreCase))
             {

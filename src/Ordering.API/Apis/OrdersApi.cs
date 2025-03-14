@@ -129,7 +129,7 @@ public static class OrdersApi
         var activity = Activity.Current;
         activity?.AddEvent(new("Create Order Async"));
         activity?.SetTag("order.request.id", requestId);
-        activity?.SetTag("order.request.userId", request.UserId);
+        activity?.SetTag("userId", request.UserId);
         activity?.SetTag("order.request.items.ids", string.Join(",", request.Items.Select(i => i.ProductId)));
         
         services.Logger.LogInformation(
@@ -151,7 +151,7 @@ public static class OrdersApi
             using var createCommandActivity = _activitySource.StartActivity("CreateOrderCommand publish");
             createCommandActivity?.AddEvent(new("Creating CreateOrderCommand"));
             createCommandActivity?.SetTag("order.request.id", requestId);
-            createCommandActivity?.SetTag("order.request.userId", request.UserId);
+            createCommandActivity?.SetTag("userId", request.UserId);
             createCommandActivity?.SetTag("order.request.items.ids", string.Join(",", request.Items.Select(i => i.ProductId)));
             
 

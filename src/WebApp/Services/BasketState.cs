@@ -130,8 +130,8 @@ public class BasketState(
             var buyerId = await authenticationStateProvider.GetBuyerIdAsync() ?? throw new InvalidOperationException("User does not have a buyer ID");
             var userName = await authenticationStateProvider.GetUserNameAsync() ?? throw new InvalidOperationException("User does not have a user name");
 
-            activity?.SetTag("basket.buyerId", buyerId);
-            activity?.SetTag("basket.userName", userName);
+            activity?.SetTag("buyerId", buyerId);
+            activity?.SetTag("userName", userName);
 
             // Get details for the items in the basket
             var orderItems = await FetchBasketItemsAsync();
