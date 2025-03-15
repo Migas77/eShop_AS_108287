@@ -502,7 +502,7 @@ private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostAppli
 }
 ```
 
-DataMaskingLogsProcessor and DataMaskingActivityProcessor are both processors that utilize DataMasking static class to mask the values of logs and tags, respectivelu.
+DataMaskingLogsProcessor and DataMaskingActivityProcessor are both processors that utilize DataMasking static class to mask the values of logs and tags, respectively.
 
 
 ### Masking Sensitive Data from Traces
@@ -562,10 +562,97 @@ public class DataMaskingActivityProcessor : BaseProcessor<Activity>
 }
 ```
 
-The next image highlights the masking of a simple tag with a regular string value (userId), whereas the second image showcases the nested masking mentioned in the previous code (tag event.content contains a dictionary with sensitive keys UserId, UserName, CardNumber and CardHolderName).
+The next image highlights the masking of a simple tag with a regular string value (userId), whereas the second image showcases the nested masking mentioned in the previous code for structured trace values (tag event.content contains a dictionary with sensitive keys UserId, UserName, CardNumber and CardHolderName).
 
 ![simple_masking](img/simple_masking.png)
 
 ![nested_masking](img/nested_masking.png)
+
+
+### Masking Sensitive Data from Logs
+
+Following a review of the logged information from the initial solution, I wasn't able to find sensitive information being logged related to the checkout process, as the authors were mindful to avoid exposing details such as credit card numbers as shown in the following code snippet from the source code (source: [Ordering.API/Apis/OrdersApi.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Ordering.API/Apis/OrdersApi.cs#L135)). 
+
+```c#
+services.Logger.LogInformation(
+  "Sending command: {CommandName} - {IdProperty}: {CommandId}",
+  request.GetGenericTypeName(),
+  nameof(request.UserId),
+  request.UserId); //don't log the request as it has CC number
+```
+
+Therefore, in the purpose of this assignment I've added a log with personal information, namely the userId, in the ``DeleteBasket`` function of file [Basket.API/Grpc/BasketService.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/Basket.API/Grpc/BasketService.cs#L80), which is called in the checkout process after the order is placed.
+
+```c#
+public override async Task<DeleteBasketResponse> DeleteBasket(DeleteBasketRequest request, ServerCallContext context)
+{
+  var activity = Activity.Current;
+
+  var userId = context.GetUserIdentity();
+  if (string.IsNullOrEmpty(userId))
+  {
+    ThrowNotAuthenticated();
+    logger.LogError("User is not authenticated");
+    activity?.AddEvent(new("User is not authenticated"));
+  }
+  logger.LogInformation("Deleting basket for userId:{UserId}", userId);
+
+  activity?.SetTag("userId", userId);
+  await repository.DeleteBasketAsync(userId);
+  return new();
+}
+```
+
+In order to mask the userId (personal information) present in this log, I've followed a similar approach to the one showcased on [Masking Sensitive Data from Traces section](#masking-sensitive-data-from-traces) of this report. Therefore, it was defined the following class [eShop.ServiceDefaults/Processors/DataMaskingLogsProcessor](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Processors/DataMaskingLogsProcessor.cs), inheriting from ``BaseProcessor<LogRecord>``, which overrides ``void OnEnd(LogRecord record)`` to parse the logs and mask sensitive information from them.
+
+The implementation is a bit simpler, comparatevily to the ``DataMaskingActivityProcessor`` due to the unstructured nature of the logs present throghout the application. Once again, this implementation utilizes the ``DataMasking`` static class in order to promote separation of concerns.
+
+```c#
+public class DataMaskingLogsProcessor : BaseProcessor<LogRecord>
+{
+  private readonly ILogger<DataMaskingLogsProcessor> _logger;
+
+  public DataMaskingLogsProcessor(ILogger<DataMaskingLogsProcessor> logger)
+  {
+    _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+  }
+
+  public override void OnEnd(LogRecord record)
+  {
+    if (record == null || record.FormattedMessage==null) return;
+    
+    // Process the body content
+    record.FormattedMessage = DataMasking.MaskPairInString(record.FormattedMessage);
+      
+  }
+}
+```
+
+To view the masked logging information, I simply accessed the Structured logs section of the Aspire dashboard, which displays the processed logs. As you can see from the next image, the previously mentioned logs has the presented userId masked.
+
+![logs_masking](img/logs_masking.png)
+
+## Grafana Dashboard
+
+To gain insights into the system's overall performance, metrics, and traces in a centralized manner, Grafana was configured with three dedicated dashboards. The first two dashboards showcased in the two following images were obtained from the [.NET Aspire metrics sample app](https://learn.microsoft.com/en-us/samples/dotnet/aspire-samples/aspire-metrics/). These dashboard, provide a comprehensive overview of the operations and performance of all the services in the application with the following information being showcased:
+
+- Requests Duration
+- Errors Rate
+- Current Connections
+- Current Requests
+- Total Requests, Total Unhandled Exceptions, Requests Secured, Requests HTTP Protocol
+- Top 10 Requested Endpoints
+- Top 10 Unhandled Exception Endpoints
+
+![asp_net_core_dashboard](img/asp_net_core_dashboard.png)
+
+![asp_net_core_endpoint_dashboard](img/asp_net_core_endpoint_dashboard.png)
+
+
+This last dashboard corresponds to a more custom dashboard showcasing an embedded jaeger tracing panel as well as the custom metrics that I've defined throghout the application.
+
+Please note that in order to not have an 100% checkout success rate I intentionally caused errors in the application by shutting down the ordering API, which prevented the checkout process from completing successfully. Also note that the load and results presented in the charts result from a locust script with 2 users (alice and bob) actively logging in, adding items to the basket and performing the checkout interaction (more details on the load generator script will be provided later)
+
+
 
 
