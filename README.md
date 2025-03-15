@@ -632,9 +632,59 @@ To view the masked logging information, I simply accessed the Structured logs se
 
 ![logs_masking](img/logs_masking.png)
 
-## Grafana Dashboard
+## Grafana 
 
-To gain insights into the system's overall performance, metrics, and traces in a centralized manner, Grafana was configured with three dedicated dashboards. The first two dashboards showcased in the two following images were obtained from the [.NET Aspire metrics sample app](https://learn.microsoft.com/en-us/samples/dotnet/aspire-samples/aspire-metrics/). These dashboard, provide a comprehensive overview of the operations and performance of all the services in the application with the following information being showcased:
+To gain insights into the system's overall performance, metrics, and traces in a centralized manner, Grafana was configured with three dedicated dashboards. In order to attain this goal, Jaeger and Prometheus data sources were set up to enable tracing and metric visualization within these dashboards.
+
+### Grafana Configuration and Datasources
+
+These section showcases the configuration of grafana and its datasources — Jaeger and Prometheus for tracing and metrics, respectively.
+
+The following [dashboards.yml](https://github.com/Migas77/eShop_AS_108287/blob/main/dashboards/dashboards.yml) is a configuration file that defines dashboard providers.
+```yml
+apiVersion: 1
+
+providers:
+  - name: Prometheus
+    folder: '.NET'
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
+```
+
+The following [jaeger.yml](https://github.com/Migas77/eShop_AS_108287/blob/main/datasources/jaeger.yml) and [prometheus.yml](https://github.com/Migas77/eShop_AS_108287/blob/main/datasources/prometheus.yml) files configure jaeger and prometheus as grafana datasources, for tracing and metrics. Bear in mind the use of ``uid: PBFA97CFB590B2093`` in order to connect the datasource to the predefined dashboard.
+
+```yml
+apiVersion: 1
+
+datasources:
+  - name: Jaeger
+    type: jaeger
+    uid: jaeger
+    url: http://host.docker.internal:16686
+    access: proxy
+    basicAuth: false
+    isDefault: false
+```
+```yml
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: PBFA97CFB590B2093
+    url: http://host.docker.internal:9090
+    access: proxy
+    isDefault: true
+```
+
+Furthermore, note the presence of files containing the json definition of the three existing dashboards: [aspnetcore-endpoint.json](https://github.com/Migas77/eShop_AS_108287/blob/main/dashboards/aspnetcore-endpoint.json), [aspnetcore.json](https://github.com/Migas77/eShop_AS_108287/blob/main/dashboards/aspnetcore.json) and [Checkout-Use-Case-Dashboard.json](https://github.com/Migas77/eShop_AS_108287/blob/main/dashboards/Checkout-Use-Case-Dashboard.json).
+
+All of this grafana configuration files, along with the dashboard definitions, are passed at container instantiation time in order to ensure proper configuration.
+
+### Grafana Dashboards
+
+The first two dashboards showcased in the two following images were obtained from the [.NET Aspire metrics sample app](https://learn.microsoft.com/en-us/samples/dotnet/aspire-samples/aspire-metrics/). These dashboard, provide a comprehensive overview of the operations and performance of all the services in the application with the following information being showcased:
 
 - Requests Duration
 - Errors Rate
@@ -651,8 +701,28 @@ To gain insights into the system's overall performance, metrics, and traces in a
 
 This last dashboard corresponds to a more custom dashboard showcasing an embedded jaeger tracing panel as well as the custom metrics that I've defined throghout the application.
 
-Please note that in order to not have an 100% checkout success rate I intentionally caused errors in the application by shutting down the ordering API, which prevented the checkout process from completing successfully. Also note that the load and results presented in the charts result from a locust script with 2 users (alice and bob) actively logging in, adding items to the basket and performing the checkout interaction (more details on the load generator script will be provided later)
+Please note that in order to not have an 100% checkout success rate I intentionally caused errors in the application by shutting down the ordering API, which prevented the checkout process from completing successfully. Also note that the load and results presented in the charts result from a locust script with 2 users (alice and bob) actively logging in, adding items to the basket and performing the checkout interaction (more details on the load generator script will be provided later).
+
+The custom grafana dashboard contains the following information:
+- embedded jaeger tracing panel - The displayed traces highlight two scenarios: one where Jaeger captures traces exceeding 30 seconds due to an intentional crash of the ordering-api service, and another representing normal operation with a response time of 51.8ms.
+- success/error rates of the checkout process - Both charts showcase a linear increase resulting from the load generator when the ordering api was up or down, respectively.
+- performance metrics for the whole checkout process. As the metric "basket.checkout.latency" corresponds to an histogram three different charts:
+  - **Bucket**: Shows the distribution of latency values across predefined ranges.
+  - **Count**: Represents the number of checkout requests recorded.
+  - **Sum**: Displays the total accumulated latency, useful for calculating the average checkout duration.
+- KPI metrics that showcase important indicators regarding the state of the business: "basket.checkout.items" and "basket.checkout.value", previously mentioned in this report. Since these metrics also correspond to histograms, the previous statement also applies here.
 
 
+![custom_dashboard_1](img/custom_dashboard_1.png)
+![custom_dashboard_2](img/custom_dashboard_2.png)
 
 
+The image below displays one of the previous traces after stopping the ordering-api service. This trace, viewed on the Grafana dashboard (and jaeger interface too), shows the error status at both trace and span levels.
+
+![grafana_dashboard_tracing](img/grafana_dashboard_jaeger_tracing.png)
+
+
+### Load Generator 
+
+
+**LACKS LOAD GENERATOR**
