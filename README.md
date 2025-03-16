@@ -816,4 +816,8 @@ Finally, while using the **composer feature**, I noticed that the IDE occasional
 
 ## Final Thoughts About the Assignment
 
-LACKS Final Thoughts About the Assignment
+In my opinion, the assignment fullfilled its purpose of introducing the students to observability, integrating OpenTelemetry & Security into the eShop and implementing log and trace processors to mask sensitive information in traces and logs, respectively. However, I wasn't able to explore data encryption and compliance in the database layer and introduce column masking for sensitive data. One of the reasons for this was my inability to log in to the PostgreSQL database via psql, despite entering the correct database, username, and password, which are listed in the connection strings. This wasn’t my first or second time doing this, yet I still don’t understand why I was unable to connect.
+
+In this assignment, I don't think I had any major difficulties other than what was already mentioned and the jaeger, prometheus and grafana setup, which took a bit of time. I also think that because of the large codebase sometimes it was hard to follow the full flow for the feature in question.
+
+Finally I think that the assignment was well defined, but I would include the following change for next year's assignment: provide a smaller codebase, which is not integrated with Aspire, as this already has some observability built-in.
