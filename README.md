@@ -2,7 +2,7 @@
 
 ## Initial Remarks
 ### Author and Github Repository
-This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementations and contents of this record contact me through this email: ``miguel.belchior@ua.pt``.
+This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementation and contents of this record contact me through this email: ``miguel.belchior@ua.pt``.
 
 ### How to build and run the eShop environment (including jaeger, prometheus and grafana)
 
@@ -58,7 +58,7 @@ Before diving into the actual implementation is important to note the following 
 4. With the basket and catalog data, the ``webapp`` sends a ``POST /api/orders/`` request to the ``ordering-api`` to create a new order. Consequently, the ``ordering-api`` saves the order into the ``orderingdb`` and publishes an ``OrderStartedIntegrationEvent`` to the ``eventbus``, notifying the beginning of the order.
 5. The ``basket-api`` receives the ``OrderStartedIntegrationEvent`` through the ``eventbus`` and proceeds to unlink the user's basket (UNLINK operation from REDIS).
 6. The ``ordering-api`` then publishes another event, ``OrderStatusChangedToSubmittedIntegrationEvent``, indicating that the order has moved to the submitted status.
-7. Finally, the ``basket-api`` receives the ``OrderStatusChangedToSubmittedIntegrationEvent`` and sends a ``POST /BasketApi.Basket/DeleteBasket`` request to delete the user's basket, which is then carried out by the ``basketdb`` with the unlink operation.
+7. Finally, the ``webapp`` receives the ``OrderStatusChangedToSubmittedIntegrationEvent`` and sends a ``POST /BasketApi.Basket/DeleteBasket`` request to delete the user's basket, which is then carried out by the ``basketdb`` with the unlink operation.
 
 ![checkout-sequence-diagram](img/checkout-sequence-diagram.png)
 
