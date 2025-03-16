@@ -1,0 +1,39 @@
+title Checkout/Place Order Sequence Diagram
+
+participant user
+participant webapp
+participant basket-api
+participant basketdb
+participant catalog-api
+participant catalogdb
+participant ordering-api
+participant orderingdb
+participant eventbus
+
+# Get basket
+user->webapp: POST\n/checkout
+webapp->basket-api: POST\n/BasketApi.Basket/GetBasket
+basket-api->basketdb: GET basket
+basketdb->basket-api:
+basket-api->webapp:
+
+# Get catalog items
+webapp->catalog-api: GET\n/api/catalog/items/by
+catalog-api->catalogdb: Get catalog items
+catalogdb->catalog-api:
+catalog-api->webapp:
+
+# Orders Api
+webapp->ordering-api: POST\n/api/orders/
+ordering-api->orderingdb: Save\norder
+ordering-api->eventbus: Publish\nOrderStartedIntegrationEvent
+eventbus->basket-api: Receive OrderStartedIntegrationEvent
+basket-api->basketdb: UNLINK Basket
+ordering-api->eventbus: Publish\nOrderStatusChangedToSubmittedIntegrationEvent
+eventbus->webapp: Receive OrderStatusChangedToSubmittedIntegrationEvent
+
+# Delete basket
+webapp->basket-api: POST /BasketApi.Basket/DeleteBasket
+basket-api->basketdb: UNLINK Basket
+
+# sequencediagram.org

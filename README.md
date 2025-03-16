@@ -222,17 +222,17 @@ Other domain events and domain event handlers are traced, until the order is sta
 
 ![checkout_trace_5](img/trace_5.png)
 
-<br />
-<br />
-As the order is submitted, an OrderStatusChangedToSubmittedIntegrationEvent is sent through rabbitmq event bus, by the ordering-api to the webapp. Once again, PII information, such as BuyerName, BuyerIdentityGuid and buyerId are also masked.
-
 ![checkout_trace_6](img/trace_6.png)
 
-Finally, the webapp makes a POST request to BasketAPI.Basket/DeleteBasket in order to delete the basket. As previously, this request is traced from the webapp until the REDIS database UNLINK operation.
+As the order is submitted, an OrderStatusChangedToSubmittedIntegrationEvent is sent through the rabbitmq event bus, by the ordering-api to the webapp. Once again, PII information, such as BuyerName, BuyerIdentityGuid and buyerId are also masked.
 
 ![checkout_trace_7](img/trace_7.png)
 
-As it's possible to conclude, the feature is traced end-to-end and full flow corresponds to the one highlighted on the sequence diagram.
+Finally, the webapp makes a POST request to BasketAPI.Basket/DeleteBasket in order to delete the basket. As previously, this request is traced from the webapp until the REDIS database UNLINK operation.
+
+![checkout_trace_8](img/trace_8.png)
+
+As it's possible to conclude, the feature is traced end-to-end and full flow observed in the trace corresponds to the one highlighted on the sequence diagram.
 
 <br />
 
