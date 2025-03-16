@@ -2,7 +2,7 @@
 
 ## Initial Remarks
 ### Author and Github Repository
-This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementation and contents of this record contact me through this email: ``miguel.belchior@ua.pt``.
+This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementation and contents of this report contact me through this email: ``miguel.belchior@ua.pt``.
 
 ### How to build and run the eShop environment (including jaeger, prometheus and grafana)
 
