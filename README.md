@@ -451,7 +451,7 @@ As previously shown, data such as the userId or credit card information was mask
 As one of the goals of the project was to mask or exclude sensitive data not only from telemetry, but also from logs, I've created a common static class DataMasking (in [eShop.ServiceDefaults/Processors/DataMasking.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Processors/DataMasking.cs#L5)), where the following is defined:
 - a private dictionary ``SensitiveKeys`` mapping the keys to be masked with the minimum number of masked characters in the corresponding value;
 - a function ``Mask(KeyValuePair<string, string> tag)``, which given a key-value pair (a tag from an activity), masks the value according to the keys and values specified in the ``SensitiveKeys`` dictionary;
-- a function ``MaskPairInString``, which given a string (from a Log), uses regex to find and mask the portion of the string containing sensitive information, according to the pattern "{sensitiveKey}:{value}".
+- a function ``MaskPairInString``, which given a string (from a Log), uses regex to find and mask the portion of the string containing sensitive information, according to the pattern "{sensitiveKey}:{value}" and to the keys and values speciﬁed in the ``SensitiveKeys`` dictionary.
 
 The organization of the DataMasking class was designed according to the following principles in mind: 
 - **Single Responsibility Principle** (SRP) — The class is solely responsible for handling the masking of sensitive information, ensuring that all logic related to data masking is centralized in one place.
