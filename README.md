@@ -513,8 +513,6 @@ To mask sentitive values from both the tags of the activities in a trace and the
 - ``builder.Services.ConfigureOpenTelemetryLoggerProvider(logging => logging.AddProcessor<DataMaskingLogsProcessor>().AddOtlpExporter());`` for logs.
 - ``builder.Services.ConfigureOpenTelemetryTracerProvider(tracing => tracing.AddProcessor<DataMaskingActivityProcessor>().AddOtlpExporter());`` for traces.
 
-In OpenTelemetry, a processor is a component that allows for the modification, enrichment, or filtering of telemetry data (such as traces, metrics, or logs) before it is exported to a backend (e.g., Jaeger, Prometheus, or Elastic). In this case, I've modified the values of tags and logs so that sensitive information is not leaked.
-
 ```c#
 private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostApplicationBuilder builder)
 {
@@ -532,15 +530,16 @@ private static IHostApplicationBuilder AddOpenTelemetryExporters(this IHostAppli
 }
 ```
 
-DataMaskingLogsProcessor and DataMaskingActivityProcessor are both processors that utilize DataMasking static class to mask the values of logs and tags, respectively.
+In OpenTelemetry, a processor is a component that allows for the modification, enrichment, or filtering of telemetry data (such as traces, metrics, or logs) before it is exported to a backend (e.g., Jaeger, Prometheus, or Elastic). In this case, I've modified the values of tags and logs so that sensitive information is not leaked. DataMaskingLogsProcessor and DataMaskingActivityProcessor are both processors that utilize DataMasking static class to mask the values of logs and tags, respectively.
 
+
+<br/>
 
 ### Masking Sensitive Data from Traces
 
 The following class DataMaskingActivityProcessor (source: [eShop.ServiceDefaults/Processors/DataMaskingActivityProcessor.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Processors/DataMaskingActivityProcessor.cs#L17)), inheriting from ``BaseProcessor<Activity>``, overrides ``void OnEnd(Activity activity)`` to parse the activities tags and mask the corresponding values.
 
-In the bellow code, it's highlighted the masking of a **simple tag containing only a string value** and the **masking of a tag containing a more structured tag value**, namely a dictionary with key value pairs, where the key/value of this dictionary will correspond (or not) to the sensitive key-value pairs. The results 
-
+In the bellow code, it's highlighted the masking of a **simple tag containing only a string value** and the **masking of a tag containing a more structured tag value**, namely a dictionary with key value pairs, where the key/value of this dictionary will correspond (or not) to the sensitive key-value pairs.
 
 ```c#
 public class DataMaskingActivityProcessor : BaseProcessor<Activity>
