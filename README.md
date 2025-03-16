@@ -234,11 +234,9 @@ Finally, the webapp makes a POST request to BasketAPI.Basket/DeleteBasket in ord
 
 As it's possible to conclude, the feature is traced end-to-end and full flow observed in the trace corresponds to the one highlighted on the sequence diagram.
 
-<br />
-
 ## Metrics
 
-Metrics are essential for observability, providing quantitative insights into system performance, resource utilization, and application health. With this in mind, I've configured Prometheus a widely used open-source monitoring system, which collects and stores metrics using a time-series database. In order to achieve this, I had to make the following changes in the configuration file [eShop.ServiceDefaults/Extensions.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Extensions.cs#L114):
+Metrics are essential for observability, providing quantitative insights into system performance, resource utilization, and application health. With this in mind, I've configured Prometheus, a widely used open-source monitoring system, which collects and stores metrics using a time-series database. In order to achieve this, I had to make the following changes in the configuration file [eShop.ServiceDefaults/Extensions.cs](https://github.com/Migas77/eShop_AS_108287/blob/main/src/eShop.ServiceDefaults/Extensions.cs#L114):
 - add line ``builder.Services.ConfigureOpenTelemetryMeterProvider(metrics => metrics.AddPrometheusExporter());`` to configure prometheus exporter for metrics;
 - uncomment line ``app.MapPrometheusScrapingEndpoint();``  to enable scrape endpoints for each service, allowing Prometheus to collect the metrics.
 
@@ -275,7 +273,7 @@ public static WebApplication MapDefaultEndpoints(this WebApplication app)
 }
 ```
 
-Furthermore, I had to specify prometheus target and map it to the docker container at the specified path so that It actually gathers the metrics, which is present at the [datasources/prometheus_config.yml file](https://github.com/Migas77/eShop_AS_108287/blob/main/datasources/prometheus_config.yml):
+Furthermore, I had to specify the prometheus targets at the specified path (using ``host.docker.internal`` to allow Prometheus to access the metrics from the host machine) so that It actually gathers the metrics, which is present at the [datasources/prometheus_config.yml file](https://github.com/Migas77/eShop_AS_108287/blob/main/datasources/prometheus_config.yml):
 
 ```yml
 global:
@@ -318,7 +316,7 @@ scrape_configs:
 
 ```
 
-At the following image, it's provided evidence on the health status of the configured targets. As it's possible conclude, the presented targets are healthy and therefore, prometheus can scrape the corresponding/existing metrics.
+At the following image, it's provided evidence on the health status of the configured targets. As it's possible to conclude, the presented targets are healthy and therefore, prometheus can scrape the corresponding/existing metrics.
 
 ![prometheus_health_targets](img/prometheus_health_targets.png)
 
