@@ -724,5 +724,76 @@ The image below displays one of the previous traces after stopping the ordering-
 
 ### Load Generator 
 
+A Locust script was created to generate load on the checkout/place order functionality. Since authentication was required before adding items to the cart and performing the checkout, the Playwright extension was used to perform the full checkout flow by interacting with the webapp through a headless browser (instead of verifying and dealing with the intricacies of the authentication flow). 
 
-**LACKS LOAD GENERATOR**
+By running the following [locustfile.py](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/locustfile.py) with two users,  Locust simulates real-world load by actively logging in as the pre-created application users Alice and Bob, adding items to the cart and placing the order.
+
+```py
+products = [
+  "99",   # Adventurer GPS Watch
+  "95",   # AeroLite Cycling Helmet
+  "88",   # Alpine AlpinePack Backpack
+  "3",    # Alpine Fusion Goggles
+  "28",   # Alpine Peak Down Jacket
+  "18",   # Alpine Tech Crampons
+  "17",   # Apex Climbing Harness
+  "74",   # Apex Climbing Harness
+  "49",   # Arctic Shield Insulated Jacket
+]
+
+auth_users = [
+  {"username": "alice", "password": "Pass123$", },
+  {"username": "bob", "password": "Pass123$", },
+]
+
+people_file = open('people.json')
+people = json.load(people_file)
+
+BASE_URL = "https://localhost:7298/"
+
+class WebsiteBrowserUser(PlaywrightUser):
+  wait_time = between(1, 10)
+  headless = True  # to use a headless browser, without a GUI
+  user_count = 0
+
+  @task
+  @pw
+  async def place_order_flow(self, page: PageWithRetry):
+    self.user_id = WebsiteBrowserUser.user_count
+    WebsiteBrowserUser.user_count += 1
+    await self.login(page)
+    await self.add_products_to_cart()
+    await self.place_order()
+      
+
+  async def login(self, page: PageWithRetry):
+    user = auth_users[self.user_id % 2]
+    await page.goto(f"{BASE_URL}user/login?returnUrl=")
+    await page.fill("#Username", user["username"])
+    await page.fill("#Password", user["password"])
+    await page.click('button[value="login"]')
+    await page.wait_for_load_state("networkidle")
+
+  async def add_products_to_cart(self):
+    num_products = random.randint(1, 4)
+    for _ in range(num_products):
+      random_product = random.choice(products)
+      await self.page.goto(f"{BASE_URL}item/{random_product}")
+      await self.page.click('button[type="submit"][title="Add to basket"]')
+      await self.page.wait_for_load_state("networkidle")
+
+
+  async def place_order(self):
+    await self.page.goto(f"{BASE_URL}checkout")
+    person = random.choice(people)
+    await self.page.fill('input[name="Info.Street"]', person["address"])
+    await self.page.fill('input[name="Info.City"]', person["city"])
+    await self.page.fill('input[name="Info.State"]', person["state"])
+    await self.page.fill('input[name="Info.ZipCode"]', person["zip"])
+    await self.page.fill('input[name="Info.Country"]', person["country"])
+    await self.page.keyboard.press("Enter")
+    await self.page.wait_for_load_state("networkidle")
+```
+
+The implementation actively logs in as the corresponding users, adds a random number of random products to the cart and performs the checkout by filling in with random people's information present on file [people.json](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/people.json).
+
