@@ -123,8 +123,6 @@ The next figure, showcases **custom created tags related to the checkout process
 - basket.total - the total price of the basket.
 - buyerId - the userId corresponding to the buyer. As you can see, the information for the buyerId is masked (c97*********************************). Later, the process of masking this and other tags will also be explained.
 
-All of these tasks reuse a pre-existing span and some of them are created in the following code snippet
-
 There are also other tags, already provided in the aspire implementation such as "url.path". It's also important to note the **use of events** to pinpoint/mark/record important events that provide additional context about what happened within the span's execution (in this case, I provide a simple event - "Get Basket Async").
 
 ![checkout_trace_1](img/trace_1.png)
