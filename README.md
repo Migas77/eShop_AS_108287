@@ -51,9 +51,16 @@ The goal of this project was to integrate OpenTelemetry tracing into a single fe
 I've focused my implementation on the **checkout/place order feature**. The feature requires the user to be authenticated to place an order with the items that are present on the basket, which is stored server-side.
 
 ## Sequence Diagram - Checkout Flow
-Before diving into the actual implementation is important to note the following sequence diagram highlighting the full flow of the **checkout/place order feature**.
+Before diving into the actual implementation is important to note the following sequence diagram highlighting the full flow of the **checkout/place order feature**. Only interactions between services, event bus and databases are showcased in this sequence diagram with processing inside each of the services being omitted (such as commands and domain events - only integration events that pass through the event bus are shown). Thus, the checkout flow present in the following sequence diagram can be divided in the following steps:
+1. The user initiates the checkout process by sending a ``POST /checkout`` request through the ``webapp``.
+2. The ``webapp`` sends a POST request ``BasketApi.Basket/GetBasket`` to the ``basket-api`` service to retrieve the user's basket. The ``basket-api`` retrieves the basket details from the ``basketdb`` and responds with the user's basket information.
+3. Afterwards, the ``webapp`` makes a ``GET /api/catalog/items/by`` request to the ``catalog-api`` to fetch details of the items in the basket. Then, the ``catalog-api`` retrieves the catalog data from ``catalogdb`` and returns the relevant product details.
+4. With the basket and catalog data, the ``webapp`` sends a ``POST /api/orders/`` request to the ``ordering-api`` to create a new order. Consequently, the ``ordering-api`` saves the order into the ``orderingdb`` and publishes an ``OrderStartedIntegrationEvent`` to the ``eventbus``, notifying the beginning of the order.
+5. The ``basket-api`` receives the ``OrderStartedIntegrationEvent`` through the ``eventbus`` and proceeds to unlink the user's basket (UNLINK operation from REDIS).
+6. The ``ordering-api`` then publishes another event, ``OrderStatusChangedToSubmittedIntegrationEvent``, indicating that the order has moved to the submitted status.
+7. Finally, the ``basket-api`` receives the ``OrderStatusChangedToSubmittedIntegrationEvent`` and sends a ``POST /BasketApi.Basket/DeleteBasket`` request to delete the user's basket, which is then carried out by the ``basketdb`` with the unlink operation.
 
-**PLACE FULL FLOW HERE**
+![checkout-sequence-diagram](img/checkout-sequence-diagram.png)
 
 ## Tracing 
 
@@ -820,7 +827,7 @@ class WebsiteBrowserUser(PlaywrightUser):
 
 The implementation actively logs in as the corresponding users, adds a random number of random products to the cart and performs the checkout by filling in with random people's information present on file [people.json](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/people.json).
 
-## Gen ai tools 
+## Gen ai Tools 
 
 As advised by the professor at the beginning of the project, when developing this project I took the opportunity to experiment with development tools integrated with AI, namely the [cursor IDE](https://www.cursor.com/) with model ``claude-3.5 sonnet``. This section includes my feedback and experiences with using this tool. Bear in mind that I usually use [jetbrains IDEs](https://www.jetbrains.com/ides/).
 
