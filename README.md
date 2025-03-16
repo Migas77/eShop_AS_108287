@@ -733,14 +733,14 @@ This next dashboard corresponds to a more custom dashboard showcasing an embedde
 The custom grafana dashboard contains the following information:
 - embedded jaeger tracing panel - The displayed traces highlight two scenarios: one where Jaeger captures traces exceeding 30 seconds due to an intentional crash of the ordering-api service, and another representing normal operation with a response time of 51.8ms.
 - success/error rates of the checkout process - Both charts showcase a linear increase resulting from the load generator when the ordering api was up or down, respectively.
+
+![custom_dashboard_1](img/custom_dashboard_1.png)
+
 - performance metrics for the whole checkout process. As the metric "basket.checkout.latency" corresponds to an histogram three different charts:
   - **Bucket**: Shows the distribution of latency values across predefined ranges.
   - **Count**: Represents the number of checkout requests recorded.
   - **Sum**: Displays the total accumulated latency, useful for calculating the average checkout duration.
 - KPI metrics that showcase important indicators regarding the state of the business: "basket.checkout.items" and "basket.checkout.value", previously mentioned in this report. Since these metrics also correspond to histograms, the previous statement also applies here.
-
-
-![custom_dashboard_1](img/custom_dashboard_1.png)
 
 ![custom_dashboard_2](img/custom_dashboard_2.png)
 
@@ -823,7 +823,7 @@ class WebsiteBrowserUser(PlaywrightUser):
     await self.page.wait_for_load_state("networkidle")
 ```
 
-The implementation actively logs in as the corresponding users, adds a random number of random products to the cart and performs the checkout by filling in with random people's information present on file [people.json](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/people.json).
+The implementation actively logs in as the corresponding users, adds a random number of random products to the cart and performs the checkout by filling in with random people information present on file [people.json](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/people.json).
 
 ## Gen ai Tools 
 
