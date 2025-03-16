@@ -728,9 +728,7 @@ The first two dashboards showcased in the two following images were obtained fro
 ![asp_net_core_endpoint_dashboard](img/asp_net_core_endpoint_dashboard.png)
 
 
-This last dashboard corresponds to a more custom dashboard showcasing an embedded jaeger tracing panel as well as the custom metrics that I've defined throghout the application.
-
-Please note that in order to not have an 100% checkout success rate I intentionally caused errors in the application by shutting down the ordering API, which prevented the checkout process from completing successfully. Also note that the load and results presented in the charts result from a locust script with 2 users (alice and bob) actively logging in, adding items to the basket and performing the checkout interaction (more details on the load generator script will be provided later).
+This next dashboard corresponds to a more custom dashboard showcasing an embedded jaeger tracing panel as well as the custom metrics that I've defined throghout the application. Please note that in order to not have an 100% checkout success rate I intentionally caused errors in the application by shutting down the ordering API, which prevented the checkout process from completing successfully. Also note that the load and results presented in the charts, result from a locust script with 2 users (alice and bob) actively logging in, adding items to the basket and performing the checkout interaction (more details on the load generator script will be provided later).
 
 The custom grafana dashboard contains the following information:
 - embedded jaeger tracing panel - The displayed traces highlight two scenarios: one where Jaeger captures traces exceeding 30 seconds due to an intentional crash of the ordering-api service, and another representing normal operation with a response time of 51.8ms.
@@ -743,6 +741,7 @@ The custom grafana dashboard contains the following information:
 
 
 ![custom_dashboard_1](img/custom_dashboard_1.png)
+
 ![custom_dashboard_2](img/custom_dashboard_2.png)
 
 
