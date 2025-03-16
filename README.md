@@ -2,11 +2,7 @@
 
 ## Initial Remarks
 ### Author and Github Repository
-This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementations and contents of this record contact me through this email: 
-
-### AI Contributions
-
-As advised by the professor at the beginning of the project, when developing this project I took the opportunity to experiment with development tools integrated with AI, namely the cursor IDE. In this report, there is a section regarding my feedback and experiences regarding the use of this tool.
+This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementations and contents of this record contact me through this email: ``miguel.belchior@ua.pt``.
 
 ### How to build and run the eShop environment<br/>(including jaeger, prometheus and grafana)
 
@@ -797,3 +793,27 @@ class WebsiteBrowserUser(PlaywrightUser):
 
 The implementation actively logs in as the corresponding users, adds a random number of random products to the cart and performs the checkout by filling in with random people's information present on file [people.json](https://github.com/Migas77/eShop_AS_108287/blob/main/load-generator/people.json).
 
+## Gen ai tools 
+
+As advised by the professor at the beginning of the project, when developing this project I took the opportunity to experiment with development tools integrated with AI, namely the [cursor IDE](https://www.cursor.com/) with model ``claude-3.5 sonnet``. This section includes my feedback and experiences with using this tool. Bear in mind that I usually use [jetbrains IDEs](https://www.jetbrains.com/ides/).
+
+### Positives
+
+The most valuable positive feedback I can provide from using Cursor is related to their **chat and composer features**. 
+
+I've used the **chat feature** to gain insights on the codebase, namely the checkout flow. It provided me with a surprinsingly complete checkout flow through the various app components therefore showcasing the context improvements provided by the IDE (it can have full context of the whole project). Furthermore, throghout the whole explanation it provided the code snippets, which were clickable and would take me to that specific file in my project inside the cursor IDE. 
+
+I've not used the **composer feature** to the extent I've used the chat feature, but the context benefits mentioned previously also apply here. Moreover, in addition to having context of the full project this feature can also modify multiple files at once with me only having to accept (or not) the changes provided by the IDE.
+
+
+### Negatives
+
+The negatives include the fact that despite essentially being a fork from VS Code, the IDE is not free and therefore the trial period has already ended.
+
+As I've previously mentioned I'm a fan of jetbrain's IDEs and not particularly fond of VS Code, which also impacted my experience with cursor.
+
+Finally, while using the **composer feature**, I noticed that the IDE occasionally removed small but crucial parts of the code. This often led to application crashes that were difficult to detect.
+
+## Final Thoughts About the Assignment
+
+LACKS Final Thoughts About the Assignment
