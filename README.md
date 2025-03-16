@@ -4,10 +4,37 @@
 ### Author and Github Repository
 This work was carried out by **Miguel Figueiredo (NMec: 108287)** as part of the Software Architectures course curriculum. The repository that includes the implementation code can be found at the following link: [eShop_AS_108287](https://github.com/Migas77/eShop_AS_108287). If there is any issue regarding the implementations and contents of this record contact me through this email: ``miguel.belchior@ua.pt``.
 
-### How to build and run the eShop environment<br/>(including jaeger, prometheus and grafana)
+### How to build and run the eShop environment (including jaeger, prometheus and grafana)
 
-I integrated Jaeger, Prometheus, and Grafana within .NET code by creating the respective containers. As a result, to run the application with full observability — beyond the Aspire dashboard already included form the initial solution — you simply need to execute the following command:
+The eShop environment uses containerized services for Jaeger, Prometheus, and Grafana to enable distributed tracing, monitoring, and data visualization. These services run in separate Docker containers, and to launch the application, you'll need to use the provided .NET command.
 
+
+#### Jaeger Setup
+```bash
+docker run -d --name jaeger-assignment-1   -e COLLECTOR_ZIPKIN_HOST_PORT=:9411   -e COLLECTOR_OTLP_ENABLED=true   -p 6831:6831/udp   -p 6832:6832/udp   -p 5778:5778   -p 16686:16686   -p 4317:4317   -p 4318:4318   -p 14250:14250   -p 14268:14268   -p 14269:14269   -p 9411:9411   jaegertracing/all-in-one:1.35
+```
+
+#### Prometheus Setup
+```basg
+docker run -d \
+  -p 9090:9090 \
+  -p 8888:8888 \
+  -v $(pwd)/datasources/prometheus_config.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
+
+#### Grafana Setup
+```bash
+docker run -d -p 3000:3000 \
+  -v $(pwd)/datasources/jaeger.yml:/etc/grafana/provisioning/datasources/jaeger.yml \
+  -v $(pwd)/datasources/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml \
+  -v $(pwd)/dashboards:/var/lib/grafana/dashboards \
+  -v $(pwd)/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml \
+  grafana/grafana
+```
+
+
+#### Application Setup
 ```powershell
 dotnet run --project src/eShop.AppHost/eShop.AppHost.csproj
 ```
